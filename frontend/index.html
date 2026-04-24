@@ -8,6 +8,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
@@ -124,6 +126,33 @@
       font-weight: 500;
       margin-left: 4px;
     }
+
+    .btn-pdf {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 8px;
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
+      color: #fff; border: none; cursor: pointer;
+      font-size: 0.78rem; font-weight: 700;
+      transition: all 0.2s; white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(239,68,68,0.3);
+    }
+    .btn-pdf:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(239,68,68,0.4); }
+    .btn-pdf:active { transform: translateY(0); }
+    .btn-pdf:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* Toast notification */
+    .toast {
+      position: fixed; bottom: 28px; right: 28px; z-index: 9999;
+      background: var(--text); color: #fff;
+      padding: 12px 20px; border-radius: 12px;
+      font-size: 0.82rem; font-weight: 600;
+      display: flex; align-items: center; gap: 8px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      animation: slideUp 0.3s ease;
+    }
+    .toast.success { background: #16a34a; }
+    .toast.error   { background: #dc2626; }
+    @keyframes slideUp { from { opacity:0; transform: translateY(20px); } to { opacity:1; transform: translateY(0); } }
 
     /* ══════════ LAYOUT ══════════ */
     .page { max-width: 1400px; margin: 0 auto; padding: 28px 32px; }
@@ -543,6 +572,155 @@ function App() {
 
   const TABS = [{id:"dashboard",label:"Dashboard"},{id:"analyse",label:"Analyser"},{id:"history",label:"Historique"}];
 
+  /* ── Export PDF ── */
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [toast, setToast]           = useState(null);
+
+  const showToast = (msg, type="success") => {
+    setToast({msg, type});
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  const exportPDF = () => {
+    const { jsPDF } = window.jspdf;
+    if (!jsPDF) { showToast("jsPDF non disponible", "error"); return; }
+    setPdfLoading(true);
+    try {
+      const doc = new jsPDF({ orientation:"portrait", unit:"mm", format:"a4" });
+      const W = doc.internal.pageSize.getWidth();
+      let y = 0;
+
+      /* ── En-tête vert ── */
+      doc.setFillColor(29, 185, 84);
+      doc.rect(0, 0, W, 38, "F");
+      doc.setFillColor(13, 110, 46);
+      doc.rect(0, 32, W, 6, "F");
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(20); doc.setFont("helvetica","bold");
+      doc.text("🌿 PlantAI — Student Plant Monitor", 14, 16);
+      doc.setFontSize(9); doc.setFont("helvetica","normal");
+      doc.text("Rapport de détection des maladies des plantes · Projet Tutoré 2026", 14, 24);
+      doc.text(`Généré le : ${new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"2-digit",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"})}`, 14, 31);
+      y = 50;
+
+      /* ── Section KPI ── */
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(12); doc.setFont("helvetica","bold");
+      doc.text("Résumé des Analyses", 14, y); y += 8;
+
+      const kpis = [
+        {label:"Total Analyses", val:String(total),   color:[29,185,84]},
+        {label:"Plantes Saines", val:String(healthy),  color:[22,163,74]},
+        {label:"Infectées",      val:String(sick),     color:[245,158,11]},
+        {label:"Critiques",      val:String(critical), color:[239,68,68]},
+      ];
+      const bw = (W - 28 - 9) / 4;
+      kpis.forEach((k, i) => {
+        const x = 14 + i*(bw+3);
+        doc.setFillColor(...k.color);
+        doc.roundedRect(x, y, bw, 20, 3, 3, "F");
+        doc.setTextColor(255,255,255);
+        doc.setFontSize(18); doc.setFont("helvetica","bold");
+        doc.text(k.val, x + bw/2, y+13, {align:"center"});
+        doc.setFontSize(7); doc.setFont("helvetica","normal");
+        doc.text(k.label, x + bw/2, y+19, {align:"center"});
+      });
+      y += 30;
+
+      /* ── Capteurs ── */
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(12); doc.setFont("helvetica","bold");
+      doc.text("État des Capteurs ESP32 (Valeurs actuelles)", 14, y); y += 8;
+
+      const sensorData = [
+        ["🌡️ Température", `${sensors.temp} °C`,     sensors.temp < 18?"Froid":sensors.temp>32?"Chaud":"Normal"],
+        ["💧 Humidité air",  `${sensors.humidity} %`, sensors.humidity<40?"Sec":sensors.humidity>80?"Saturé":"Normal"],
+        ["🌱 Humidité sol",  `${sensors.soil} %`,     sensors.soil<40?"Sec":sensors.soil>75?"Saturé":"Normal"],
+        ["☀️ Luminosité",    `${sensors.light} %`,    sensors.light<30?"Sombre":sensors.light>85?"Fort":"Normal"],
+      ];
+      doc.autoTable({
+        startY: y,
+        head: [["Capteur","Valeur","Statut"]],
+        body: sensorData,
+        theme: "grid",
+        headStyles: { fillColor:[29,185,84], textColor:255, fontStyle:"bold", fontSize:9 },
+        bodyStyles: { fontSize:9, textColor:[15,23,42] },
+        alternateRowStyles: { fillColor:[232,248,237] },
+        margin: { left:14, right:14 },
+        tableWidth: W - 28,
+      });
+      y = doc.lastAutoTable.finalY + 12;
+
+      /* ── Dernier diagnostic ── */
+      if (result) {
+        doc.setFontSize(12); doc.setFont("helvetica","bold"); doc.setTextColor(15,23,42);
+        doc.text("Dernier Diagnostic IA", 14, y); y += 8;
+        const statusColor = result.niveau==="healthy"?[29,185,84]:result.niveau==="sick"?[245,158,11]:[239,68,68];
+        doc.setFillColor(...statusColor);
+        doc.roundedRect(14, y, W-28, 18, 3, 3, "F");
+        doc.setTextColor(255,255,255);
+        doc.setFontSize(13); doc.setFont("helvetica","bold");
+        doc.text(result.maladie, 20, y+8);
+        doc.setFontSize(9); doc.setFont("helvetica","normal");
+        doc.text(`Confiance : ${result.score}%  ·  Statut : ${result.niveau==="healthy"?"Saine":result.niveau==="sick"?"Infectée":"Critique"}`, 20, y+15);
+        y += 26;
+        if (result.conseil) {
+          doc.setTextColor(13,110,46); doc.setFontSize(9); doc.setFont("helvetica","italic");
+          doc.text(`💡 ${result.conseil}`, 14, y, {maxWidth: W-28}); y += 14;
+        }
+      }
+
+      /* ── Historique ── */
+      if (history.length > 0) {
+        doc.setFontSize(12); doc.setFont("helvetica","bold"); doc.setTextColor(15,23,42);
+        doc.text("Historique des Analyses", 14, y); y += 6;
+        doc.autoTable({
+          startY: y,
+          head: [["#","Image","Maladie détectée","Confiance","Statut","Date"]],
+          body: history.map((h,i) => [
+            String(history.length-i),
+            h.image||"image.jpg",
+            h.maladie,
+            `${h.score}%`,
+            h.niveau==="healthy"?"✓ Saine":h.niveau==="sick"?"⚠ Infectée":"✕ Critique",
+            h.date.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}),
+          ]),
+          theme: "striped",
+          headStyles: { fillColor:[15,23,42], textColor:255, fontStyle:"bold", fontSize:8 },
+          bodyStyles: { fontSize:8 },
+          alternateRowStyles: { fillColor:[247,249,252] },
+          margin: { left:14, right:14 },
+          tableWidth: W-28,
+          didParseCell: (data) => {
+            if (data.section==="body" && data.column.index===4) {
+              const v = data.cell.raw;
+              if (v.includes("Saine"))    data.cell.styles.textColor = [22,163,74];
+              if (v.includes("Infectée")) data.cell.styles.textColor = [217,119,6];
+              if (v.includes("Critique")) data.cell.styles.textColor = [220,38,38];
+            }
+          }
+        });
+      }
+
+      /* ── Pied de page ── */
+      const pages = doc.internal.getNumberOfPages();
+      for (let i=1; i<=pages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8); doc.setTextColor(148,163,184); doc.setFont("helvetica","normal");
+        doc.text(`PlantAI · Projet Tutoré 2026 · Page ${i}/${pages}`, W/2, doc.internal.pageSize.getHeight()-8, {align:"center"});
+        doc.setDrawColor(229,231,235); doc.line(14, doc.internal.pageSize.getHeight()-12, W-14, doc.internal.pageSize.getHeight()-12);
+      }
+
+      doc.save(`PlantAI_Rapport_${new Date().toLocaleDateString("fr-FR").replace(/\//g,"-")}.pdf`);
+      showToast("✅ Rapport PDF téléchargé !");
+    } catch(e) {
+      showToast("❌ Erreur lors de la génération du PDF", "error");
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   return (<>
 
     {/* ══ NAVBAR ══ */}
@@ -561,8 +739,14 @@ function App() {
         ))}
       </div>
       <div className="nav-badge"><span className="pulse-dot"/>ESP32-CAM — Online</div>
+      <button className="btn-pdf" onClick={exportPDF} disabled={pdfLoading}>
+        {pdfLoading ? "⏳ Génération..." : "📄 Exporter PDF"}
+      </button>
       <div className="nav-time">{fmtTime(now)}</div>
     </nav>
+
+    {/* Toast */}
+    {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
 
     {/* ══ PAGE ══ */}
     <div className="page">
