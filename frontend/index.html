@@ -751,6 +751,80 @@
     body.dark .login-logo-text h1 { color: var(--text); }
     body.dark .login-sub, body.dark .login-title { color: var(--text); }
 
+    /* ══════════ PROFIL UTILISATEUR ══════════ */
+    .nav-profile {
+      position: relative;
+    }
+    .nav-profile-btn {
+      display: flex; align-items: center; gap: 9px;
+      padding: 5px 12px 5px 6px;
+      border: 1.5px solid var(--border); border-radius: 24px;
+      background: var(--white); cursor: pointer;
+      transition: all 0.2s; white-space: nowrap;
+    }
+    .nav-profile-btn:hover { border-color: var(--green); box-shadow: 0 0 0 3px rgba(29,185,84,0.1); }
+    .nav-avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.82rem; font-weight: 800; color: #fff;
+      flex-shrink: 0; box-shadow: 0 2px 6px rgba(29,185,84,0.3);
+    }
+    .nav-profile-name { font-size: 0.78rem; font-weight: 700; color: var(--text); }
+    .nav-profile-role { font-size: 0.65rem; color: var(--text3); }
+    .nav-chevron { font-size: 0.6rem; color: var(--text3); margin-left: 2px; transition: transform 0.2s; }
+    .nav-chevron.open { transform: rotate(180deg); }
+
+    /* Dropdown menu */
+    .profile-dropdown {
+      position: absolute; top: calc(100% + 10px); right: 0;
+      width: 260px; background: var(--white);
+      border: 1.5px solid var(--border); border-radius: 16px;
+      box-shadow: var(--shadow-lg); z-index: 5000;
+      animation: dropIn 0.2s cubic-bezier(0.34,1.3,0.64,1);
+      overflow: hidden;
+    }
+    @keyframes dropIn { from{opacity:0;transform:translateY(-10px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+
+    .pd-header {
+      padding: 18px 18px 14px;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      display: flex; align-items: center; gap: 13px;
+    }
+    .pd-avatar-lg {
+      width: 46px; height: 46px; border-radius: 14px;
+      background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.35);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; font-weight: 900; color: #fff; flex-shrink: 0;
+    }
+    .pd-name  { font-size: 0.9rem; font-weight: 800; color: #fff; }
+    .pd-email { font-size: 0.7rem; color: rgba(255,255,255,0.75); margin-top: 2px; word-break: break-all; }
+    .pd-role-badge {
+      display: inline-block; margin-top: 5px;
+      background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 20px; padding: 2px 10px; font-size: 0.65rem; font-weight: 700; color: #fff;
+    }
+
+    .pd-body { padding: 10px 8px; }
+    .pd-item {
+      display: flex; align-items: center; gap: 11px;
+      padding: 9px 10px; border-radius: 10px;
+      font-size: 0.8rem; color: var(--text2); font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .pd-item:hover { background: var(--green-pale); color: var(--green-dark); }
+    .pd-item-icon { font-size: 1rem; width: 22px; text-align: center; flex-shrink: 0; }
+    .pd-sep { height: 1px; background: var(--border); margin: 6px 10px; }
+    .pd-item.danger:hover { background: #fee2e2; color: #dc2626; }
+
+    .pd-stats {
+      margin: 0 10px 8px; padding: 10px 12px;
+      background: var(--bg); border-radius: 10px; border: 1px solid var(--border);
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; text-align: center;
+    }
+    .pd-stat-val   { font-size: 1.1rem; font-weight: 900; color: var(--text); }
+    .pd-stat-label { font-size: 0.62rem; color: var(--text3); margin-top: 1px; }
+
     /* ══════════ LOGIN PAGE ══════════ */
     .login-page {
       min-height: 100vh;
@@ -1060,7 +1134,7 @@ function SplashScreen({ onDone }) {
 }
 
 /* ══════════════ LOGIN PAGE ══════════════ */
-function LoginPage({ onLogin }) {
+function LoginPage({ onLogin /* onLogin(email) */ }) {
   const [email,       setEmail]       = useState("");
   const [password,    setPassword]    = useState("");
   const [showPw,      setShowPw]      = useState(false);
@@ -1088,7 +1162,7 @@ function LoginPage({ onLogin }) {
     setTimeout(() => {
       if (password.trim() === DEMO_PASSWORD) {
         setLoading(false);
-        onLogin();
+        onLogin(email.trim());
       } else {
         setLoading(false);
         setError("Mot de passe incorrect. Entrez : plantai2026");
@@ -1243,6 +1317,7 @@ function LoginPage({ onLogin }) {
 function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userEmail,  setUserEmail]  = useState("");
   const [darkMode,  setDarkMode]   = useState(false);
   const [page,setPage]           = useState("dashboard");
   const [imageSrc,setImageSrc]   = useState(null);
@@ -1258,6 +1333,12 @@ function App() {
 
   useEffect(()=>{ const id=setInterval(()=>setNow(new Date()),1000); return ()=>clearInterval(id); },[]);
   useEffect(()=>{ document.body.classList.toggle("dark", darkMode); },[darkMode]);
+  useEffect(()=>{
+    if (!profileOpen) return;
+    const close = (e) => { if (!e.target.closest(".nav-profile")) setProfileOpen(false); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  },[profileOpen]);
 
   const total    = history.length;
   const healthy  = history.filter(h=>h.niveau==="healthy").length;
@@ -1304,6 +1385,12 @@ function App() {
   const healthSub   = loading ? "Analyse en cours — modèle CNN" : result ? `Analysé · Confiance : ${result.score}%` : "Soumettez une image pour démarrer";
 
   const TABS = [{id:"dashboard",label:"Dashboard"},{id:"analyse",label:"Analyser"},{id:"history",label:"Historique"}];
+
+  /* ── Profil ── */
+  const [profileOpen, setProfileOpen] = useState(false);
+  const userName   = userEmail ? userEmail.split("@")[0].replace(/[._]/g," ").replace(/\b\w/g,c=>c.toUpperCase()) : "Étudiant";
+  const userInitials = userName.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+  const loginTime  = useRef(new Date());
 
   /* ── Export PDF ── */
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -1478,7 +1565,7 @@ function App() {
   if (showSplash) return <SplashScreen onDone={()=>setShowSplash(false)}/>;
 
   /* Page de connexion */
-  if (!isLoggedIn) return <LoginPage onLogin={()=>setIsLoggedIn(true)}/>;
+  if (!isLoggedIn) return <LoginPage onLogin={(email)=>{ setUserEmail(email); setIsLoggedIn(true); }}/>;
 
   return (<div className="dashboard-enter">
 
@@ -1513,24 +1600,73 @@ function App() {
       <div className="nav-time">{fmtTime(now)}</div>
 
       {/* Bouton dark mode */}
-      <button className="btn-theme" onClick={()=>setDarkMode(p=>!p)} title={darkMode?"Passer en mode clair":"Passer en mode sombre"}>
+      <button className="btn-theme" onClick={()=>setDarkMode(p=>!p)} title={darkMode?"Mode clair":"Mode sombre"}>
         {darkMode ? "☀️" : "🌙"}
       </button>
 
-      <button
-        onClick={()=>setIsLoggedIn(false)}
-        title="Se déconnecter"
-        style={{
-          padding:"6px 12px", borderRadius:"8px", border:"1.5px solid var(--border)",
-          background:"#fff", color:"var(--text2)", fontSize:"0.75rem", fontWeight:700,
-          cursor:"pointer", display:"flex", alignItems:"center", gap:"5px", transition:"all 0.18s",
-          whiteSpace:"nowrap"
-        }}
-        onMouseEnter={e=>{e.currentTarget.style.background="#fee2e2";e.currentTarget.style.borderColor="#fca5a5";e.currentTarget.style.color="#dc2626";}}
-        onMouseLeave={e=>{e.currentTarget.style.background="#fff";e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.color="var(--text2)";}}
-      >
-        🚪 Déconnexion
-      </button>
+      {/* ── Profil utilisateur ── */}
+      <div className="nav-profile">
+        <button className="nav-profile-btn" onClick={()=>setProfileOpen(p=>!p)}>
+          <div className="nav-avatar">{userInitials}</div>
+          <div style={{textAlign:"left"}}>
+            <div className="nav-profile-name">{userName}</div>
+            <div className="nav-profile-role">Étudiant IoT</div>
+          </div>
+          <span className={`nav-chevron ${profileOpen?"open":""}`}>▼</span>
+        </button>
+
+        {profileOpen && (
+          <div className="profile-dropdown">
+            {/* En-tête vert */}
+            <div className="pd-header">
+              <div className="pd-avatar-lg">{userInitials}</div>
+              <div>
+                <div className="pd-name">{userName}</div>
+                <div className="pd-email">{userEmail}</div>
+                <span className="pd-role-badge">🎓 Projet Tutoré 2026</span>
+              </div>
+            </div>
+
+            {/* Stats rapides */}
+            <div className="pd-stats">
+              <div>
+                <div className="pd-stat-val">{total}</div>
+                <div className="pd-stat-label">Analyses</div>
+              </div>
+              <div>
+                <div className="pd-stat-val" style={{color:"#1db954"}}>{healthy}</div>
+                <div className="pd-stat-label">Saines</div>
+              </div>
+              <div>
+                <div className="pd-stat-val" style={{color:"#ef4444"}}>{critical}</div>
+                <div className="pd-stat-label">Critiques</div>
+              </div>
+            </div>
+
+            <div className="pd-body">
+              <div className="pd-item" onClick={()=>{ setProfileOpen(false); setPage("dashboard"); }}>
+                <span className="pd-item-icon">📊</span> Dashboard
+              </div>
+              <div className="pd-item" onClick={()=>{ setProfileOpen(false); setPage("history"); }}>
+                <span className="pd-item-icon">🗂️</span> Historique des analyses
+              </div>
+              <div className="pd-item" onClick={()=>{ setDarkMode(p=>!p); setProfileOpen(false); }}>
+                <span className="pd-item-icon">{darkMode?"☀️":"🌙"}</span>
+                {darkMode ? "Mode clair" : "Mode sombre"}
+              </div>
+              <div className="pd-sep"/>
+              <div className="pd-item" style={{fontSize:"0.75rem",color:"var(--text3)",cursor:"default",pointerEvents:"none"}}>
+                <span className="pd-item-icon">⏱️</span>
+                Connecté depuis {Math.round((new Date()-loginTime.current)/60000)||"<1"} min
+              </div>
+              <div className="pd-sep"/>
+              <div className="pd-item danger" onClick={()=>{ setProfileOpen(false); setIsLoggedIn(false); setUserEmail(""); }}>
+                <span className="pd-item-icon">🚪</span> Se déconnecter
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </nav>
 
     {/* Barre d'alerte sticky */}
