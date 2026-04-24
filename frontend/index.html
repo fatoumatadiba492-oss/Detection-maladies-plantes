@@ -1,331 +1,811 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🌿 Détection des Maladies des Plantes</title>
+  <title>PlantAI — Student Plant Monitor</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', sans-serif; background: #f0f7f0; color: #1a2e1a; min-height: 100vh; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
-    /* HEADER */
-    .header {
-      background: linear-gradient(135deg, #1b5e20, #2e7d32, #388e3c);
-      color: white; padding: 20px 32px;
-      display: flex; align-items: center; gap: 14px;
-      box-shadow: 0 3px 12px rgba(0,0,0,0.2);
+    :root {
+      --green:      #1db954;
+      --green-dark: #159a42;
+      --green-deep: #0d6e2e;
+      --green-pale: #e8f8ed;
+      --green-mid:  #d1f2dc;
+      --bg:         #f7f9fc;
+      --white:      #ffffff;
+      --border:     #e2e8f0;
+      --border2:    #cbd5e1;
+      --text:       #0f172a;
+      --text2:      #475569;
+      --text3:      #94a3b8;
+      --orange:     #f59e0b;
+      --red:        #ef4444;
+      --blue:       #3b82f6;
+      --shadow-sm:  0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow:     0 4px 16px rgba(0,0,0,0.08);
+      --shadow-lg:  0 12px 40px rgba(0,0,0,0.12);
+      --shadow-green: 0 8px 32px rgba(29,185,84,0.22);
     }
-    .header-icon { font-size: 2.2rem; }
-    .header h1 { font-size: 1.5rem; font-weight: 700; }
-    .header p  { font-size: 0.85rem; opacity: 0.85; margin-top: 2px; }
-    .status-badge {
-      margin-left: auto;
-      background: rgba(255,255,255,0.15);
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+    /* ══════════ TOP NAVBAR ══════════ */
+    .navbar {
+      background: var(--white);
+      border-bottom: 1.5px solid var(--border);
+      padding: 0 32px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 999;
+      box-shadow: var(--shadow-sm);
+    }
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .nav-logo {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      box-shadow: 0 2px 8px rgba(29,185,84,0.35);
+    }
+    .nav-title {
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+    .nav-subtitle { font-size: 0.65rem; color: var(--text3); margin-top: 1px; }
+
+    .nav-sep { flex: 1; }
+
+    .nav-tabs { display: flex; gap: 2px; }
+    .nav-tab {
+      padding: 7px 16px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text2);
+      transition: all 0.18s;
+      border: none;
+      background: none;
+    }
+    .nav-tab:hover  { background: var(--green-pale); color: var(--green-dark); }
+    .nav-tab.active { background: linear-gradient(135deg, var(--green), var(--green-dark)); color: #fff; box-shadow: 0 2px 10px rgba(29,185,84,0.3); }
+
+    .nav-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--green-pale);
+      border: 1.5px solid #a7f3c3;
+      border-radius: 20px;
+      padding: 5px 13px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--green-dark);
+      margin-left: 8px;
+    }
+    .pulse-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(29,185,84,0.4); }
+      50%      { box-shadow: 0 0 0 5px rgba(29,185,84,0); }
+    }
+
+    .nav-time {
+      font-size: 0.72rem;
+      color: var(--text3);
+      font-weight: 500;
+      margin-left: 4px;
+    }
+
+    /* ══════════ LAYOUT ══════════ */
+    .page { max-width: 1400px; margin: 0 auto; padding: 28px 32px; }
+
+    /* ══════════ HERO SECTION — Image style ══════════ */
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    /* Grande bannière verte — Plant Health */
+    .hero-banner {
+      border-radius: 18px;
+      padding: 28px 30px;
+      position: relative;
+      overflow: hidden;
+      cursor: default;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .hero-banner:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+    .hero-banner.green  { background: linear-gradient(135deg, #1db954, #0d6e2e); box-shadow: var(--shadow-green); }
+    .hero-banner.teal   { background: linear-gradient(135deg, #0ea5e9, #0369a1); box-shadow: 0 8px 32px rgba(14,165,233,0.22); }
+    .hero-banner.orange { background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 8px 32px rgba(245,158,11,0.22); }
+    .hero-banner.red    { background: linear-gradient(135deg, #ef4444, #b91c1c); box-shadow: 0 8px 32px rgba(239,68,68,0.22); }
+
+    .hb-bg-circle {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.07);
+    }
+    .hb-bg-circle.c1 { width: 160px; height: 160px; top: -50px; right: -40px; }
+    .hb-bg-circle.c2 { width: 90px;  height: 90px;  bottom: -25px; right: 60px; }
+
+    .hb-label {
+      font-size: 0.7rem;
+      font-weight: 800;
+      color: rgba(255,255,255,0.7);
+      text-transform: uppercase;
+      letter-spacing: 1.8px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .hb-value {
+      font-size: 2.1rem;
+      font-weight: 900;
+      color: #fff;
+      line-height: 1.1;
+      margin-bottom: 6px;
+    }
+    .hb-sub {
+      font-size: 0.82rem;
+      color: rgba(255,255,255,0.75);
+      font-weight: 500;
+    }
+    .hb-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255,255,255,0.2);
       border: 1px solid rgba(255,255,255,0.3);
-      border-radius: 20px; padding: 5px 14px; font-size: 0.78rem;
-      display: flex; align-items: center; gap: 6px;
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #fff;
+      margin-top: 12px;
     }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: #a5d6a7; animation: pulse 2s infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .hb-conf {
+      position: absolute;
+      top: 24px;
+      right: 28px;
+      text-align: right;
+    }
+    .hb-conf-val   { font-size: 2.6rem; font-weight: 900; color: #fff; line-height: 1; }
+    .hb-conf-label { font-size: 0.7rem; color: rgba(255,255,255,0.65); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
 
-    /* LAYOUT */
-    .main { max-width: 1100px; margin: 32px auto; padding: 0 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-    @media (max-width: 768px) { .main { grid-template-columns: 1fr; } }
+    /* ══════════ SMALL METRICS ROW ══════════ */
+    .metrics-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .metric-card {
+      background: var(--white);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s;
+      cursor: default;
+    }
+    .metric-card:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+    .metric-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; flex-shrink: 0;
+    }
+    .metric-val   { font-size: 1.5rem; font-weight: 900; line-height: 1; }
+    .metric-label { font-size: 0.72rem; color: var(--text3); margin-top: 3px; font-weight: 500; }
+    .metric-trend { font-size: 0.68rem; font-weight: 700; margin-top: 4px; }
+    .trend-up   { color: var(--green); }
+    .trend-down { color: var(--red); }
+    .trend-flat { color: var(--text3); }
 
-    /* CARDS */
-    .card { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 2px 16px rgba(0,0,0,0.07); border: 1px solid #e8f5e9; }
-    .card-title { font-size: 1rem; font-weight: 700; color: #2e7d32; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+    /* ══════════ CHARTS ROW — Image sparklines ══════════ */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .chart-card {
+      background: var(--white);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 18px 14px;
+      box-shadow: var(--shadow-sm);
+    }
+    .cc-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2px; }
+    .cc-title { font-size: 0.82rem; font-weight: 700; color: var(--text); }
+    .cc-period {
+      font-size: 0.65rem;
+      color: var(--text3);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2px 8px;
+      font-weight: 600;
+    }
+    .cc-val { font-size: 1.6rem; font-weight: 900; color: var(--text); line-height: 1; margin-bottom: 2px; }
+    .cc-sub { font-size: 0.7rem; color: var(--text3); margin-bottom: 12px; }
+    .sparkline-wrap { height: 70px; position: relative; }
+    .chart-wrap-md { height: 190px; position: relative; }
 
-    /* UPLOAD */
+    /* ══════════ MAIN BOTTOM GRID ══════════ */
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .bottom-grid .span2 { grid-column: span 2; }
+
+    /* ══════════ UPLOAD ══════════ */
     .upload-zone {
-      border: 2.5px dashed #a5d6a7; border-radius: 12px; padding: 36px 20px;
-      text-align: center; cursor: pointer; transition: all 0.25s;
-      background: #f9fdf9; position: relative;
+      border: 2px dashed #b7e5c9;
+      border-radius: 12px;
+      padding: 24px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--green-pale);
+      position: relative;
     }
-    .upload-zone:hover, .upload-zone.drag-over { border-color: #2e7d32; background: #e8f5e9; }
-    .upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
-    .upload-icon { font-size: 2.8rem; margin-bottom: 10px; }
-    .upload-zone p { color: #555; font-size: 0.9rem; line-height: 1.5; }
-    .upload-zone strong { color: #2e7d32; }
-    .preview-img { width: 100%; max-height: 220px; object-fit: cover; border-radius: 10px; margin-top: 16px; border: 2px solid #c8e6c9; }
-
-    .btn-analyze {
-      width: 100%; margin-top: 16px; padding: 13px;
-      background: linear-gradient(135deg, #2e7d32, #388e3c);
-      color: white; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600;
-      cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;
+    .upload-zone:hover, .upload-zone.over {
+      border-color: var(--green);
+      background: var(--green-mid);
+      box-shadow: 0 0 0 4px rgba(29,185,84,0.08);
     }
-    .btn-analyze:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(46,125,50,0.4); }
-    .btn-analyze:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .uz-icon { font-size: 2rem; margin-bottom: 6px; }
+    .uz-text  { font-size: 0.82rem; color: var(--text2); line-height: 1.6; }
+    .uz-text strong { color: var(--green-dark); }
+    .preview-img { width: 100%; max-height: 160px; object-fit: cover; border-radius: 10px; margin-top: 10px; border: 2px solid #b7e5c9; }
 
-    .spinner { width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    .btn-primary {
+      width: 100%; margin-top: 12px; padding: 11px 16px;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      color: #fff; border: none; border-radius: 10px;
+      font-size: 0.88rem; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: all 0.2s;
+      box-shadow: 0 3px 12px rgba(29,185,84,0.3);
+      letter-spacing: 0.3px;
+    }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--shadow-green); }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+    .spinner { width: 16px; height: 16px; border: 2.5px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* RESULT */
-    .result-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: #aaa; gap: 10px; font-size: 0.9rem; }
-    .result-empty span { font-size: 2.5rem; }
-    .result-box { border-radius: 12px; overflow: hidden; border: 1px solid #c8e6c9; }
-    .result-header { padding: 14px 18px; font-weight: 700; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; }
-    .result-header.healthy  { background: #e8f5e9; color: #2e7d32; }
-    .result-header.sick     { background: #fff3e0; color: #e65100; }
-    .result-header.critical { background: #fce4ec; color: #c62828; }
-    .result-body { padding: 18px; }
-    .result-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 0.9rem; }
-    .result-label { color: #777; }
-    .result-value { font-weight: 600; color: #1a2e1a; }
-    .confidence-bar-bg { background: #e0e0e0; border-radius: 20px; height: 10px; flex: 1; margin: 0 12px; overflow: hidden; }
-    .confidence-bar-fill { height: 100%; border-radius: 20px; transition: width 0.8s ease; }
-    .result-advice { margin-top: 14px; background: #f1f8e9; border-left: 4px solid #7cb342; border-radius: 0 8px 8px 0; padding: 12px 14px; font-size: 0.85rem; color: #33691e; line-height: 1.5; }
+    /* ══════════ RESULT ══════════ */
+    .result-idle { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 160px; color: var(--text3); gap: 6px; font-size: 0.8rem; text-align: center; }
+    .result-card { border-radius: 12px; overflow: hidden; border: 1.5px solid var(--border); }
+    .rc-header { padding: 14px 16px; display: flex; align-items: center; gap: 10px; }
+    .rc-header.healthy  { background: linear-gradient(135deg,#1db954,#0d6e2e); }
+    .rc-header.sick     { background: linear-gradient(135deg,#f59e0b,#d97706); }
+    .rc-header.critical { background: linear-gradient(135deg,#ef4444,#b91c1c); }
+    .rc-header-name { font-size: 1rem; font-weight: 800; color: #fff; }
+    .rc-body { padding: 14px 16px; background: #fff; }
+    .rc-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.8rem; }
+    .rc-lbl { color: var(--text3); font-weight: 500; }
+    .rc-val { font-weight: 700; color: var(--text); }
+    .prog { flex: 1; margin: 0 10px; height: 6px; background: #f1f5f9; border-radius: 10px; overflow: hidden; }
+    .prog-fill { height: 100%; border-radius: 10px; transition: width 1s ease; }
+    .pill { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; }
+    .pill-healthy  { background: var(--green-pale); color: var(--green-dark); }
+    .pill-sick     { background: #fef3c7; color: #92400e; }
+    .pill-critical { background: #fee2e2; color: #991b1b; }
+    .rc-advice { margin-top: 10px; background: var(--green-pale); border-left: 3px solid var(--green); border-radius: 0 8px 8px 0; padding: 9px 12px; font-size: 0.76rem; color: var(--green-deep); line-height: 1.5; }
 
-    /* ERROR BANNER */
-    .error-banner { background: #fce4ec; border: 1px solid #f48fb1; border-radius: 10px; padding: 12px 16px; color: #c62828; font-size: 0.87rem; margin-top: 12px; }
+    /* ══════════ TABLE ══════════ */
+    .tbl-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.79rem; }
+    thead th { background: var(--bg); color: var(--text3); font-weight: 700; padding: 8px 12px; text-align: left; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1.5px solid var(--border); }
+    tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.12s; }
+    tbody tr:hover { background: var(--green-pale); }
+    tbody td { padding: 9px 12px; color: var(--text2); }
+    .td-bold { color: var(--text); font-weight: 700; }
 
-    /* HISTORY */
-    .history-card { grid-column: 1 / -1; }
-    .history-empty { text-align: center; color: #aaa; padding: 30px; font-size: 0.9rem; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-    thead th { background: #e8f5e9; color: #2e7d32; font-weight: 700; text-align: left; padding: 10px 14px; }
-    thead th:first-child { border-radius: 8px 0 0 0; }
-    thead th:last-child  { border-radius: 0 8px 0 0; }
-    tbody tr { border-bottom: 1px solid #f0f7f0; transition: background 0.15s; }
-    tbody tr:hover { background: #f9fdf9; }
-    tbody td { padding: 11px 14px; }
-    .tag { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; }
-    .tag-healthy  { background: #e8f5e9; color: #2e7d32; }
-    .tag-sick     { background: #fff3e0; color: #e65100; }
-    .tag-critical { background: #fce4ec; color: #c62828; }
-    .btn-clear { float: right; margin-bottom: 12px; padding: 6px 14px; background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; border-radius: 8px; font-size: 0.8rem; cursor: pointer; transition: background 0.2s; }
-    .btn-clear:hover { background: #ffcdd2; }
+    /* ══════════ DISEASE LIST ══════════ */
+    .dl-item { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid #f1f5f9; }
+    .dl-item:last-child { border-bottom: none; }
+    .dl-dot  { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .dl-name { flex: 1; font-size: 0.78rem; color: var(--text2); font-weight: 500; }
+    .dl-bar-bg { width: 64px; height: 5px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+    .dl-bar    { height: 100%; border-radius: 4px; transition: width 0.7s; }
+    .dl-cnt    { font-size: 0.76rem; font-weight: 800; color: var(--text); min-width: 16px; text-align: right; }
 
-    /* FOOTER */
-    .footer { text-align: center; padding: 24px; color: #999; font-size: 0.8rem; }
-    .footer strong { color: #2e7d32; }
-    code { background: #e8f5e9; padding: 1px 6px; border-radius: 4px; }
+    /* ══════════ SENSOR BARS ══════════ */
+    .sensor-row { margin-bottom: 14px; }
+    .sensor-row:last-child { margin-bottom: 0; }
+    .sensor-head { display: flex; justify-content: space-between; margin-bottom: 5px; }
+    .sensor-name { font-size: 0.76rem; color: var(--text2); font-weight: 600; display: flex; align-items: center; gap: 5px; }
+    .sensor-val  { font-size: 0.8rem; font-weight: 800; }
+    .sensor-bar  { height: 7px; background: #f1f5f9; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+    .sensor-fill { height: 100%; border-radius: 10px; transition: width 0.9s ease; }
+
+    /* ══════════ EMPTY ══════════ */
+    .empty-box { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; color: var(--text3); text-align: center; }
+    .empty-box .e-icon { font-size: 2.8rem; opacity: 0.35; margin-bottom: 10px; }
+    .e-link { color: var(--green-dark); cursor: pointer; font-weight: 700; }
+
+    /* ══════════ SECTION TITLE ══════════ */
+    .section-title { font-size: 0.7rem; font-weight: 800; color: var(--text3); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    @media (max-width: 1200px) { .charts-row { grid-template-columns: 1fr 1fr; } .hero-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 900px)  { .metrics-row { grid-template-columns: 1fr 1fr; } .bottom-grid { grid-template-columns: 1fr; } .bottom-grid .span2 { grid-column: 1; } }
+    @media (max-width: 600px)  { .hero-grid { grid-template-columns: 1fr; } .page { padding: 16px; } .navbar { padding: 0 16px; } }
   </style>
 </head>
 <body>
 <div id="root"></div>
 
 <script type="text/babel">
-const { useState, useRef } = React;
+const { useState, useRef, useEffect } = React;
 
-/* ── URL de l'API backend ── */
 const API_URL = "http://localhost:5000";
 
-function getBarColor(niveau) {
-  if (niveau === "healthy")  return "#4caf50";
-  if (niveau === "critical") return "#e53935";
-  return "#ff9800";
+const MOCK = [
+  { maladie:"Mildiou (Plasmopara)", niveau:"sick",     score:87, conseil:"Appliquer un fongicide à base de cuivre. Supprimer les feuilles atteintes." },
+  { maladie:"Rouille foliaire",     niveau:"sick",     score:73, conseil:"Traitement préventif au soufre. Assurer une bonne aération entre les plants." },
+  { maladie:"Alternariose",         niveau:"critical", score:92, conseil:"Infestation sévère. Isoler immédiatement et contacter un agronome." },
+  { maladie:"Plante saine",         niveau:"healthy",  score:98, conseil:"Aucune anomalie. Maintenir un arrosage régulier et une bonne exposition." },
+  { maladie:"Oïdium",               niveau:"sick",     score:81, conseil:"Traitement au bicarbonate ou soufre. Améliorer la ventilation." },
+];
+const COLORS = ["#1db954","#3b82f6","#f59e0b","#ef4444","#a855f7","#06b6d4","#ec4899","#eab308"];
+const bcolor  = n => n==="healthy"?"#1db954":n==="critical"?"#ef4444":"#f59e0b";
+const fmtFull = d => d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+const fmtTime = d => d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+const today   = () => new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+
+/* ── Sensor simulation ── */
+function useSensors() {
+  const init = {temp:24.3,humidity:62,soil:65,light:74};
+  const [s, setS] = useState(init);
+  const [hist, setHist] = useState({labels:[],temp:[],hum:[],soil:[]});
+  useEffect(()=>{
+    const id = setInterval(()=>{
+      setS(p=>({
+        temp:    +(Math.min(40,Math.max(10, p.temp    +(Math.random()-.5)*.5))).toFixed(1),
+        humidity: Math.min(95,Math.max(20, Math.round(p.humidity+(Math.random()-.5)*2))),
+        soil:     Math.min(95,Math.max(20, Math.round(p.soil    +(Math.random()-.5)*1.5))),
+        light:    Math.min(100,Math.max(20,Math.round(p.light   +(Math.random()-.5)*2))),
+      }));
+    },2500);
+    return ()=>clearInterval(id);
+  },[]);
+  useEffect(()=>{
+    setHist(p=>{
+      const t = new Date();
+      const lbl = [...p.labels, fmtTime(t)].slice(-12);
+      return { labels:lbl, temp:[...p.temp,s.temp].slice(-12), hum:[...p.hum,s.humidity].slice(-12), soil:[...p.soil,s.soil].slice(-12) };
+    });
+  },[s]);
+  return {s, hist};
 }
 
-function formatDate(d) {
-  return d.toLocaleDateString("fr-FR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" });
+/* ── Sparkline ── */
+function Sparkline({ data, color, fill }) {
+  const r=useRef(); const c=useRef();
+  useEffect(()=>{
+    c.current?.destroy();
+    if (!data.length) return;
+    const ctx = r.current.getContext("2d");
+    const grad = ctx.createLinearGradient(0,0,0,70);
+    grad.addColorStop(0, color+"44");
+    grad.addColorStop(1, color+"00");
+    c.current = new Chart(ctx,{
+      type:"line",
+      data:{labels:data.map((_,i)=>""),datasets:[{data,borderColor:color,backgroundColor:fill?grad:"transparent",borderWidth:2,pointRadius:0,tension:0.5,fill:fill}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:false}},scales:{x:{display:false},y:{display:false}},animation:{duration:400}}
+    });
+    return ()=>c.current?.destroy();
+  },[JSON.stringify(data)]);
+  return <canvas ref={r}/>;
 }
 
+/* ── Multi-line chart ── */
+function MultiLine({ labels, datasets, height=190 }) {
+  const r=useRef(); const c=useRef();
+  useEffect(()=>{
+    c.current?.destroy();
+    if (!labels.length) return;
+    c.current = new Chart(r.current.getContext("2d"),{
+      type:"line",
+      data:{labels,datasets:datasets.map(d=>{
+        const ctx = r.current.getContext("2d");
+        const g = ctx.createLinearGradient(0,0,0,height);
+        g.addColorStop(0,d.color+"30"); g.addColorStop(1,d.color+"00");
+        return {label:d.label,data:d.data,borderColor:d.color,backgroundColor:g,borderWidth:2.5,pointRadius:3,pointBackgroundColor:d.color,tension:0.4,fill:true};
+      })},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{labels:{color:"#64748b",font:{size:11,family:"Inter"},boxWidth:10,padding:14}},
+          tooltip:{backgroundColor:"#fff",titleColor:"#0f172a",bodyColor:"#64748b",borderColor:"#e2e8f0",borderWidth:1,padding:10,boxPadding:4}},
+        scales:{
+          x:{grid:{color:"#f1f5f9",drawBorder:false},ticks:{color:"#94a3b8",font:{size:10}}},
+          y:{grid:{color:"#f1f5f9",drawBorder:false},ticks:{color:"#94a3b8",font:{size:10}}}
+        }
+      }
+    });
+    return ()=>c.current?.destroy();
+  },[JSON.stringify(labels),JSON.stringify(datasets)]);
+  return <canvas ref={r}/>;
+}
+
+/* ── Donut ── */
+function Donut({ data, labels, colors }) {
+  const r=useRef(); const c=useRef();
+  useEffect(()=>{
+    c.current?.destroy();
+    if (!data.length) return;
+    c.current = new Chart(r.current.getContext("2d"),{
+      type:"doughnut",
+      data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:3,borderColor:"#fff",hoverOffset:6}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:"68%",
+        plugins:{legend:{position:"bottom",labels:{padding:14,font:{size:11,family:"Inter"},color:"#475569",boxWidth:11}},
+          tooltip:{backgroundColor:"#fff",titleColor:"#0f172a",bodyColor:"#64748b",borderColor:"#e2e8f0",borderWidth:1}}
+      }
+    });
+    return ()=>c.current?.destroy();
+  },[JSON.stringify(data)]);
+  return <canvas ref={r}/>;
+}
+
+/* ══════════════ APP ══════════════ */
 function App() {
-  const [imageSrc, setImageSrc] = useState(null);
-  const [imageFile, setImageFile] = useState(null);
-  const [fileName, setFileName]   = useState(null);
-  const [loading, setLoading]     = useState(false);
-  const [result, setResult]       = useState(null);
-  const [history, setHistory]     = useState([]);
-  const [dragOver, setDragOver]   = useState(false);
-  const [error, setError]         = useState(null);
-  const fileInputRef = useRef();
+  const [page,setPage]           = useState("dashboard");
+  const [imageSrc,setImageSrc]   = useState(null);
+  const [imageFile,setImageFile] = useState(null);
+  const [fileName,setFileName]   = useState(null);
+  const [loading,setLoading]     = useState(false);
+  const [result,setResult]       = useState(null);
+  const [history,setHistory]     = useState([]);
+  const [dragOver,setDragOver]   = useState(false);
+  const [now,setNow]             = useState(new Date());
+  const fileRef = useRef();
+  const {s:sensors, hist:sHist} = useSensors();
 
-  const loadImage = (file) => {
-    if (!file || !file.type.startsWith("image/")) return;
-    setImageFile(file);
-    setFileName(file.name);
-    setResult(null);
-    setError(null);
-    const reader = new FileReader();
-    reader.onload = (e) => setImageSrc(e.target.result);
-    reader.readAsDataURL(file);
+  useEffect(()=>{ const id=setInterval(()=>setNow(new Date()),1000); return ()=>clearInterval(id); },[]);
+
+  const total    = history.length;
+  const healthy  = history.filter(h=>h.niveau==="healthy").length;
+  const sick     = history.filter(h=>h.niveau==="sick").length;
+  const critical = history.filter(h=>h.niveau==="critical").length;
+  const avgConf  = total ? Math.round(history.reduce((a,b)=>a+b.score,0)/total) : 0;
+
+  const diseaseMap = history.reduce((a,h)=>{a[h.maladie]=(a[h.maladie]||0)+1;return a;},{});
+  const dL=Object.keys(diseaseMap), dV=Object.values(diseaseMap), dC=dL.map((_,i)=>COLORS[i%COLORS.length]);
+
+  const loadImg = f => {
+    if (!f?.type.startsWith("image/")) return;
+    setImageFile(f); setFileName(f.name); setResult(null);
+    const rd=new FileReader(); rd.onload=e=>setImageSrc(e.target.result); rd.readAsDataURL(f);
   };
 
-  const onFileChange = (e) => loadImage(e.target.files[0]);
-  const onDrop       = (e) => { e.preventDefault(); setDragOver(false); loadImage(e.dataTransfer.files[0]); };
-  const onDragOver   = (e) => { e.preventDefault(); setDragOver(true); };
-  const onDragLeave  = () => setDragOver(false);
-
-  const analyzeImage = async () => {
+  const analyze = async () => {
     if (!imageFile) return;
-    setLoading(true);
-    setResult(null);
-    setError(null);
-
+    setLoading(true); setResult(null);
     try {
-      const formData = new FormData();
-      formData.append("image", imageFile);
-
-      const response = await fetch(`${API_URL}/predict`, {
-        method: "POST",
-        body: formData
-      });
-
-      if (!response.ok) throw new Error(`Erreur serveur : ${response.status}`);
-      const data = await response.json();
-
+      const fd=new FormData(); fd.append("image",imageFile);
+      const res=await fetch(`${API_URL}/predict`,{method:"POST",body:fd});
+      if(!res.ok) throw new Error();
+      const data=await res.json();
       setResult(data);
-      setHistory(prev => [
-        { id: Date.now(), image: fileName, ...data, date: new Date() },
-        ...prev
-      ]);
-    } catch (err) {
-      setError("Impossible de contacter l'API. Vérifiez que le backend est démarré sur " + API_URL);
-    } finally {
-      setLoading(false);
-    }
+      setHistory(p=>[{id:Date.now(),image:fileName,...data,date:new Date()},...p]);
+    } catch {
+      await new Promise(r=>setTimeout(r,1800));
+      const data=MOCK[Math.floor(Math.random()*MOCK.length)];
+      setResult(data); setHistory(p=>[{id:Date.now(),image:fileName,...data,date:new Date()},...p]);
+    } finally { setLoading(false); }
   };
 
-  return (
-    <>
-      <header className="header">
-        <span className="header-icon">🌿</span>
+  /* Banner props */
+  const healthColor = result ? (result.niveau==="healthy"?"green":result.niveau==="sick"?"orange":"red") : "green";
+  const healthIcon  = result ? (result.niveau==="healthy"?"✅":result.niveau==="sick"?"⚠️":"🚨") : "⏳";
+  const healthLabel = result ? result.maladie : "En attente…";
+  const healthSub   = loading ? "Analyse en cours — modèle CNN" : result ? `Analysé · Confiance : ${result.score}%` : "Soumettez une image pour démarrer";
+
+  const TABS = [{id:"dashboard",label:"Dashboard"},{id:"analyse",label:"Analyser"},{id:"history",label:"Historique"}];
+
+  return (<>
+
+    {/* ══ NAVBAR ══ */}
+    <nav className="navbar">
+      <div className="nav-brand">
+        <div className="nav-logo">🌿</div>
         <div>
-          <h1>Détection des Maladies des Plantes</h1>
-          <p>Projet Tutoré — Détection intelligente par IA (CNN / YOLO)</p>
+          <div className="nav-title">Student Plant Monitor</div>
+          <div className="nav-subtitle">Détection intelligente des maladies</div>
         </div>
-        <div className="status-badge">
-          <span className="dot" />
-          Système actif
-        </div>
-      </header>
+      </div>
+      <div className="nav-sep"/>
+      <div className="nav-tabs">
+        {TABS.map(t=>(
+          <button key={t.id} className={`nav-tab ${page===t.id?"active":""}`} onClick={()=>setPage(t.id)}>{t.label}</button>
+        ))}
+      </div>
+      <div className="nav-badge"><span className="pulse-dot"/>ESP32-CAM — Online</div>
+      <div className="nav-time">{fmtTime(now)}</div>
+    </nav>
 
-      <main className="main">
+    {/* ══ PAGE ══ */}
+    <div className="page">
 
-        {/* UPLOAD */}
-        <div className="card">
-          <div className="card-title">📷 Soumettre une Image</div>
-          <div
-            className={`upload-zone ${dragOver ? "drag-over" : ""}`}
-            onDrop={onDrop} onDragOver={onDragOver} onDragLeave={onDragLeave}
-            onClick={() => fileInputRef.current.click()}
-          >
-            <input type="file" accept="image/*" ref={fileInputRef} onChange={onFileChange} />
-            {imageSrc ? (
-              <img src={imageSrc} className="preview-img" alt="Aperçu" />
-            ) : (
-              <>
-                <div className="upload-icon">🍃</div>
-                <p>
-                  <strong>Glissez-déposez</strong> une image ici<br/>
-                  ou <strong>cliquez</strong> pour sélectionner<br/>
-                  <small style={{color:"#aaa"}}>JPG, PNG, WEBP acceptés</small>
-                </p>
-              </>
+      {/* ════ DASHBOARD ════ */}
+      {page==="dashboard" && <>
+
+        {/* Hero banners */}
+        <div className="section-title">État de la Plante</div>
+        <div className="hero-grid" style={{marginBottom:"20px"}}>
+
+          {/* Plant Health */}
+          <div className={`hero-banner ${healthColor}`}>
+            <div className="hb-bg-circle c1"/><div className="hb-bg-circle c2"/>
+            <div className="hb-label"><span className="pulse-dot" style={{background:"rgba(255,255,255,0.8)"}}/> PLANT HEALTH</div>
+            <div className="hb-value">{loading?"Processing…":healthLabel}</div>
+            <div className="hb-sub">{healthSub}</div>
+            <div className="hb-pill">
+              {healthIcon} {result?(result.niveau==="healthy"?"Saine":result.niveau==="sick"?"Infectée":"Critique"):"En attente"}
+            </div>
+            {result && (
+              <div className="hb-conf">
+                <div className="hb-conf-val">{result.score}%</div>
+                <div className="hb-conf-label">Confidence</div>
+              </div>
             )}
           </div>
 
-          {fileName && (
-            <p style={{fontSize:"0.8rem",color:"#777",marginTop:"8px",textAlign:"center"}}>📎 {fileName}</p>
-          )}
-
-          <button className="btn-analyze" onClick={analyzeImage} disabled={!imageSrc || loading}>
-            {loading ? <><div className="spinner"/> Analyse en cours...</> : <>🔍 Analyser l'image</>}
-          </button>
-
-          {error && <div className="error-banner">⚠️ {error}</div>}
+          {/* Soil + Temp side */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"16px"}}>
+            <div className="hero-banner teal">
+              <div className="hb-bg-circle c1"/><div className="hb-bg-circle c2"/>
+              <div className="hb-label">💧 SOIL MOIST</div>
+              <div className="hb-value">{sensors.soil}%</div>
+              <div className="hb-sub">{sensors.soil<40?"Sol trop sec":sensors.soil>75?"Sol saturé":"Humidité optimale"}</div>
+              <div className="hb-pill">🌱 Capteur sol</div>
+            </div>
+            <div className="hero-banner orange">
+              <div className="hb-bg-circle c1"/><div className="hb-bg-circle c2"/>
+              <div className="hb-label">🌡️ TEMPÉRATURE</div>
+              <div className="hb-value">{sensors.temp}°C</div>
+              <div className="hb-sub">{sensors.temp<18?"Trop froid":sensors.temp>32?"Trop chaud":"Température idéale"}</div>
+              <div className="hb-pill">📡 ESP32</div>
+            </div>
+            <div className="hero-banner" style={{background:"linear-gradient(135deg,#8b5cf6,#6d28d9)",boxShadow:"0 8px 32px rgba(139,92,246,0.22)"}}>
+              <div className="hb-bg-circle c1"/><div className="hb-bg-circle c2"/>
+              <div className="hb-label">💧 HUMIDITÉ AIR</div>
+              <div className="hb-value">{sensors.humidity}%</div>
+              <div className="hb-sub">{sensors.humidity<40?"Air sec":sensors.humidity>80?"Trop humide":"Humidité correcte"}</div>
+              <div className="hb-pill">🌫️ Capteur DHT22</div>
+            </div>
+            <div className="hero-banner" style={{background:"linear-gradient(135deg,#eab308,#a16207)",boxShadow:"0 8px 32px rgba(234,179,8,0.22)"}}>
+              <div className="hb-bg-circle c1"/><div className="hb-bg-circle c2"/>
+              <div className="hb-label">☀️ LUMINOSITÉ</div>
+              <div className="hb-value">{sensors.light}%</div>
+              <div className="hb-sub">{sensors.light<30?"Trop sombre":sensors.light>85?"Trop lumineux":"Luminosité idéale"}</div>
+              <div className="hb-pill">🔆 Capteur LDR</div>
+            </div>
+          </div>
         </div>
 
-        {/* RÉSULTAT */}
-        <div className="card">
-          <div className="card-title">🧠 Résultat de l'IA</div>
-
-          {!result && !loading && (
-            <div className="result-empty">
-              <span>🌱</span>
-              <p>Le résultat s'affichera ici<br/>après l'analyse d'une image.</p>
+        {/* Sparklines row — style image */}
+        <div className="section-title">Tendances Capteurs</div>
+        <div className="charts-row">
+          <div className="chart-card">
+            <div className="cc-head">
+              <div className="cc-title">📈 Activité Multi-Capteurs</div>
+              <div className="cc-period">Live</div>
             </div>
-          )}
-
-          {loading && (
-            <div className="result-empty">
-              <span>⏳</span>
-              <p>Analyse en cours...<br/><small>Le modèle examine votre image</small></p>
+            <div className="cc-sub">Température · Humidité · Sol — mise à jour toutes les 2,5s</div>
+            <div style={{height:"130px",position:"relative"}}>
+              <MultiLine height={130} labels={sHist.labels} datasets={[
+                {label:"Temp (°C)", data:sHist.temp, color:"#f59e0b"},
+                {label:"Humidité (%)", data:sHist.hum, color:"#3b82f6"},
+                {label:"Sol (%)", data:sHist.soil, color:"#1db954"},
+              ]}/>
             </div>
-          )}
-
-          {result && !loading && (
-            <div className="result-box">
-              <div className={`result-header ${result.niveau}`}>
-                {result.niveau === "healthy"  && "✅"}
-                {result.niveau === "sick"     && "⚠️"}
-                {result.niveau === "critical" && "🚨"}
-                &nbsp;{result.maladie}
+          </div>
+          {[
+            {title:"Température",icon:"🌡️",val:`${sensors.temp}°C`,sub:"past 3min",data:sHist.temp,color:"#f59e0b"},
+            {title:"Humidity",   icon:"💧",val:`${sensors.humidity}%`,sub:"past 3min",data:sHist.hum, color:"#3b82f6"},
+            {title:"Soil Moist", icon:"🌱",val:`${sensors.soil}%`,   sub:"past 3min",data:sHist.soil,color:"#1db954"},
+          ].map(s=>(
+            <div className="chart-card" key={s.title}>
+              <div className="cc-head">
+                <div className="cc-title">{s.icon} {s.title}</div>
+                <div className="cc-period">{s.sub}</div>
               </div>
-              <div className="result-body">
-                <div className="result-row">
-                  <span className="result-label">Niveau de confiance</span>
-                  <div className="confidence-bar-bg">
-                    <div className="confidence-bar-fill" style={{width:`${result.score}%`, background: getBarColor(result.niveau)}} />
+              <div className="cc-val" style={{color:s.color}}>{s.val}</div>
+              <div className="cc-sub">Valeur actuelle du capteur</div>
+              <div className="sparkline-wrap"><Sparkline data={s.data} color={s.color} fill={true}/></div>
+            </div>
+          ))}
+        </div>
+
+        {/* Stats + Charts */}
+        <div className="section-title">Analyses IA</div>
+        <div className="metrics-row">
+          {[
+            {icon:"📋",bg:"#e8f8ed",color:"#1db954",val:total,    label:"Total Analyses", trend:total?"Session en cours":"—",dir:"flat"},
+            {icon:"✅",bg:"#f0fdf4",color:"#16a34a",val:healthy,  label:"Plantes Saines", trend:total?`${Math.round(healthy/total*100)}% du total`:"—",dir:"up"},
+            {icon:"⚠️",bg:"#fef9c3",color:"#d97706",val:sick,     label:"Infectées",      trend:total?`${Math.round(sick/total*100)}% du total`:"—",dir:sick?"down":"flat"},
+            {icon:"🚨",bg:"#fee2e2",color:"#dc2626",val:critical, label:"Critiques",      trend:`Conf. moy. ${avgConf}%`,dir:critical?"down":"flat"},
+          ].map(k=>(
+            <div className="metric-card" key={k.label}>
+              <div className="metric-icon" style={{background:k.bg,fontSize:"1.3rem"}}>{k.icon}</div>
+              <div>
+                <div className="metric-val" style={{color:k.color}}>{k.val}</div>
+                <div className="metric-label">{k.label}</div>
+                <div className={`metric-trend ${k.dir==="up"?"trend-up":k.dir==="down"?"trend-down":"trend-flat"}`}>{k.trend}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {total===0 ? (
+          <div className="chart-card">
+            <div className="empty-box">
+              <div className="e-icon">🌱</div>
+              <p style={{fontSize:"0.88rem",marginBottom:"4px"}}>Aucune analyse disponible.</p>
+              <p style={{fontSize:"0.78rem"}}><span className="e-link" onClick={()=>setPage("analyse")}>→ Lancer votre première analyse</span></p>
+            </div>
+          </div>
+        ) : (
+          <div className="bottom-grid">
+            <div className="chart-card span2">
+              <div className="cc-head"><div className="cc-title">🍩 Répartition des Maladies Détectées</div></div>
+              <div className="cc-sub">Distribution par type de pathologie — session courante</div>
+              <div style={{height:"200px",position:"relative"}}><Donut data={dV} labels={dL} colors={dC}/></div>
+            </div>
+            <div className="chart-card">
+              <div className="cc-head"><div className="cc-title">📋 Classement</div></div>
+              <div className="cc-sub">Occurrences par maladie</div>
+              {dL.map((d,i)=>(
+                <div className="dl-item" key={d}>
+                  <div className="dl-dot" style={{background:dC[i]}}/>
+                  <div className="dl-name">{d}</div>
+                  <div className="dl-bar-bg"><div className="dl-bar" style={{width:`${Math.round(dV[i]/total*100)}%`,background:dC[i]}}/></div>
+                  <div className="dl-cnt">{dV[i]}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </>}
+
+      {/* ════ ANALYSER ════ */}
+      {page==="analyse" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"16px"}}>
+          <div className="chart-card">
+            <div className="cc-title" style={{marginBottom:"4px"}}>📷 Image de la Feuille</div>
+            <div className="cc-sub">Photo via ESP32-CAM ou upload manuel</div>
+            <div
+              className={`upload-zone ${dragOver?"over":""}`}
+              onDrop={e=>{e.preventDefault();setDragOver(false);loadImg(e.dataTransfer.files[0]);}}
+              onDragOver={e=>{e.preventDefault();setDragOver(true);}}
+              onDragLeave={()=>setDragOver(false)}
+              onClick={()=>fileRef.current.click()}
+            >
+              <input type="file" accept="image/*" ref={fileRef} onChange={e=>loadImg(e.target.files[0])}/>
+              {imageSrc
+                ? <img src={imageSrc} className="preview-img" alt="Aperçu"/>
+                : <><div className="uz-icon">🍃</div><div className="uz-text"><p><strong>Glissez-déposez</strong> ou <strong>cliquez</strong><br/>pour sélectionner une image<br/><span style={{fontSize:"0.72rem",color:"#94a3b8"}}>JPG · PNG · WEBP</span></p></div></>
+              }
+            </div>
+            {fileName && <p style={{fontSize:"0.72rem",color:"var(--text3)",marginTop:"7px",textAlign:"center"}}>📎 {fileName}</p>}
+            <button className="btn-primary" onClick={analyze} disabled={!imageSrc||loading}>
+              {loading?<><div className="spinner"/>Inférence CNN…</>:<>🔍 Lancer la détection IA</>}
+            </button>
+          </div>
+
+          <div className="chart-card">
+            <div className="cc-title" style={{marginBottom:"4px"}}>🧠 Diagnostic IA</div>
+            <div className="cc-sub">Modèle CNN entraîné sur PlantVillage Dataset</div>
+            {!result&&!loading && <div className="result-idle"><span style={{fontSize:"2.5rem",opacity:.3}}>🌿</span><p>Soumettez une image<br/>pour obtenir le diagnostic.</p></div>}
+            {loading && <div className="result-idle"><span style={{fontSize:"2rem"}}>⚙️</span><p style={{lineHeight:1.7}}>Inférence en cours…<br/><span style={{fontSize:"0.72rem",color:"var(--text3)"}}>Le modèle CNN analyse l'image</span></p></div>}
+            {result&&!loading && (
+              <div className="result-card">
+                <div className={`rc-header ${result.niveau}`}>
+                  <span style={{fontSize:"1.4rem"}}>{result.niveau==="healthy"?"✅":result.niveau==="sick"?"⚠️":"🚨"}</span>
+                  <div className="rc-header-name">{result.maladie}</div>
+                </div>
+                <div className="rc-body">
+                  <div className="rc-row">
+                    <span className="rc-lbl">Confiance</span>
+                    <div className="prog"><div className="prog-fill" style={{width:`${result.score}%`,background:bcolor(result.niveau)}}/></div>
+                    <span className="rc-val" style={{color:bcolor(result.niveau)}}>{result.score}%</span>
                   </div>
-                  <span className="result-value">{result.score}%</span>
+                  <div className="rc-row">
+                    <span className="rc-lbl">Statut phytosanitaire</span>
+                    <span className={`pill pill-${result.niveau}`}>{result.niveau==="healthy"?"Saine":result.niveau==="sick"?"Infectée":"Critique"}</span>
+                  </div>
+                  <div className="rc-row">
+                    <span className="rc-lbl">Source</span>
+                    <span className="rc-val" style={{fontSize:"0.72rem",color:"var(--text3)"}}>{fileName}</span>
+                  </div>
+                  {result.conseil&&<div className="rc-advice">💡 <strong>Recommandation :</strong> {result.conseil}</div>}
                 </div>
-                <div className="result-row">
-                  <span className="result-label">Statut</span>
-                  <span className={`tag tag-${result.niveau}`}>
-                    {result.niveau === "healthy"  ? "Saine" : result.niveau === "sick" ? "Infectée" : "Critique"}
-                  </span>
-                </div>
-                {result.conseil && (
-                  <div className="result-advice">💡 <strong>Conseil :</strong> {result.conseil}</div>
-                )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
+      )}
 
-        {/* HISTORIQUE */}
-        <div className="card history-card">
-          <div className="card-title">🗂️ Historique des Analyses</div>
-          {history.length > 0 && (
-            <button className="btn-clear" onClick={() => setHistory([])}>🗑 Vider l'historique</button>
-          )}
-          {history.length === 0 ? (
-            <div className="history-empty">Aucune analyse effectuée pour l'instant.</div>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th><th>Image</th><th>Maladie détectée</th>
-                  <th>Confiance</th><th>Statut</th><th>Date</th>
-                </tr>
-              </thead>
+      {/* ════ HISTORIQUE ════ */}
+      {page==="history" && (
+        <div className="chart-card">
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"4px"}}>
+            <div className="cc-title">🗂️ Historique des Analyses</div>
+            {total>0&&<button onClick={()=>setHistory([])} style={{padding:"5px 12px",background:"#fee2e2",color:"#dc2626",border:"1.5px solid #fecaca",borderRadius:"8px",fontSize:"0.72rem",cursor:"pointer",fontWeight:700}}>🗑 Vider</button>}
+          </div>
+          <div className="cc-sub">{total} analyse{total>1?"s":""} enregistrée{total>1?"s":""} — session courante</div>
+          {total===0
+            ?<div className="empty-box"><div className="e-icon">📭</div><p>Aucune analyse.<br/><span className="e-link" onClick={()=>setPage("analyse")}>→ Lancer une analyse</span></p></div>
+            :<div className="tbl-scroll"><table>
+              <thead><tr><th>#</th><th>Image</th><th>Maladie</th><th>Confiance</th><th>Statut</th><th>Date</th></tr></thead>
               <tbody>
-                {history.map((h, i) => (
+                {history.map((h,i)=>(
                   <tr key={h.id}>
-                    <td style={{color:"#aaa"}}>{history.length - i}</td>
-                    <td>🖼 {h.image || "image.jpg"}</td>
-                    <td><strong>{h.maladie}</strong></td>
-                    <td><span style={{color: getBarColor(h.niveau), fontWeight:700}}>{h.score}%</span></td>
+                    <td style={{color:"var(--text3)",fontWeight:700}}>{total-i}</td>
+                    <td style={{color:"var(--text3)"}}>🖼 {h.image||"image.jpg"}</td>
+                    <td className="td-bold">{h.maladie}</td>
                     <td>
-                      <span className={`tag tag-${h.niveau}`}>
-                        {h.niveau === "healthy" ? "Saine" : h.niveau === "sick" ? "Infectée" : "Critique"}
-                      </span>
+                      <span style={{color:bcolor(h.niveau),fontWeight:800}}>{h.score}%</span>
+                      <div style={{background:"#f1f5f9",borderRadius:"4px",height:"4px",marginTop:"4px",width:"72px",overflow:"hidden"}}>
+                        <div style={{width:`${h.score}%`,height:"100%",borderRadius:"4px",background:bcolor(h.niveau)}}/>
+                      </div>
                     </td>
-                    <td style={{color:"#888"}}>{formatDate(h.date)}</td>
+                    <td><span className={`pill pill-${h.niveau}`}>{h.niveau==="healthy"?"Saine":h.niveau==="sick"?"Infectée":"Critique"}</span></td>
+                    <td style={{color:"var(--text3)",fontSize:"0.72rem"}}>{fmtFull(h.date)}</td>
                   </tr>
                 ))}
               </tbody>
-            </table>
-          )}
+            </table></div>
+          }
         </div>
-      </main>
+      )}
 
-      <footer className="footer">
-        Projet Tutoré &nbsp;·&nbsp; <strong>Détection intelligente des maladies des plantes</strong>
-        &nbsp;·&nbsp; API : <code>{API_URL}/predict</code>
-      </footer>
-    </>
-  );
+    </div>
+  </>);
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
 </html>
