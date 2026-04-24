@@ -751,6 +751,73 @@
     body.dark .login-logo-text h1 { color: var(--text); }
     body.dark .login-sub, body.dark .login-title { color: var(--text); }
 
+    /* ══════════ STATISTIQUES ══════════ */
+    .stats-kpi-row {
+      display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 20px;
+    }
+    .stats-kpi {
+      background: var(--white); border: 1.5px solid var(--border);
+      border-radius: 16px; padding: 20px 22px;
+      box-shadow: var(--shadow-sm); transition: all 0.2s; position: relative; overflow: hidden;
+    }
+    .stats-kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+    .stats-kpi-accent { position: absolute; top:0; left:0; right:0; height:4px; border-radius: 16px 16px 0 0; }
+    .stats-kpi-icon { font-size: 1.6rem; margin-bottom: 10px; }
+    .stats-kpi-val  { font-size: 2.2rem; font-weight: 900; line-height: 1; color: var(--text); }
+    .stats-kpi-label{ font-size: 0.72rem; color: var(--text3); margin-top: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; }
+    .stats-kpi-sub  { font-size: 0.72rem; font-weight: 700; margin-top: 8px; }
+
+    .stats-grid-top {
+      display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; margin-bottom: 14px;
+    }
+    .stats-grid-bot {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 20px;
+    }
+
+    /* Barre de maladie dans le classement */
+    .disease-rank-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 9px 0; border-bottom: 1px solid var(--border);
+    }
+    .disease-rank-item:last-child { border-bottom: none; }
+    .rank-num {
+      width: 22px; height: 22px; border-radius: 7px;
+      background: var(--bg); color: var(--text3);
+      font-size: 0.68rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .rank-num.top { background: linear-gradient(135deg,#f59e0b,#d97706); color:#fff; }
+    .rank-name { flex:1; font-size: 0.8rem; font-weight: 600; color: var(--text); }
+    .rank-bar-bg { width: 80px; height: 6px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+    .rank-bar-fill { height: 100%; border-radius: 4px; transition: width 0.8s ease; }
+    .rank-count { font-size: 0.78rem; font-weight: 800; min-width: 28px; text-align: right; }
+
+    /* Indicateur de santé global */
+    .health-score-wrap {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 20px 0; gap: 6px;
+    }
+    .health-score-val { font-size: 3.5rem; font-weight: 900; line-height: 1; }
+    .health-score-label { font-size: 0.78rem; color: var(--text3); font-weight: 600; }
+    .health-score-ring {
+      width: 120px; height: 120px; position: relative; margin: 10px 0;
+    }
+    .health-score-ring svg { transform: rotate(-90deg); }
+    .ring-bg   { fill: none; stroke: var(--border); stroke-width: 10; }
+    .ring-fill { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 1s ease; }
+
+    .stats-tip {
+      background: var(--green-pale); border: 1px solid #a7f3c3; border-radius: 10px;
+      padding: 12px 16px; font-size: 0.78rem; color: var(--green-deep); line-height: 1.6;
+      display: flex; align-items: flex-start; gap: 10px; margin-top: 14px;
+    }
+    body.dark .stats-tip { background: #0d2e1a; border-color: #1a4a2a; color: #6ee7a0; }
+
+    @media (max-width: 900px) {
+      .stats-kpi-row { grid-template-columns: 1fr 1fr; }
+      .stats-grid-top, .stats-grid-bot { grid-template-columns: 1fr; }
+    }
+
     /* ══════════ PROFIL UTILISATEUR ══════════ */
     .nav-profile {
       position: relative;
@@ -1384,7 +1451,7 @@ function App() {
   const healthLabel = result ? result.maladie : "En attente…";
   const healthSub   = loading ? "Analyse en cours — modèle CNN" : result ? `Analysé · Confiance : ${result.score}%` : "Soumettez une image pour démarrer";
 
-  const TABS = [{id:"dashboard",label:"Dashboard"},{id:"analyse",label:"Analyser"},{id:"history",label:"Historique"}];
+  const TABS = [{id:"dashboard",label:"📊 Dashboard"},{id:"analyse",label:"🔍 Analyser"},{id:"history",label:"🗂️ Historique"},{id:"stats",label:"📈 Statistiques"}];
 
   /* ── Profil ── */
   const [profileOpen, setProfileOpen] = useState(false);
@@ -2008,6 +2075,203 @@ function App() {
           }
         </div>
       )}
+
+      {/* ════ STATISTIQUES ════ */}
+      {page==="stats" && (()=>{
+
+        /* ── Calculs ── */
+        const healthScore = total === 0 ? 100 : Math.round((healthy / total) * 100);
+        const scoreColor  = healthScore >= 70 ? "#1db954" : healthScore >= 40 ? "#f59e0b" : "#ef4444";
+        const circumference = 2 * Math.PI * 52;
+        const dashOffset    = circumference - (healthScore / 100) * circumference;
+
+        const avgConf2    = total ? Math.round(history.reduce((a,b)=>a+b.score,0)/total) : 0;
+        const lastAnalysis= history[0];
+
+        /* Classement maladies */
+        const diseaseRank = Object.entries(
+          history.reduce((acc,h)=>{ acc[h.maladie]=(acc[h.maladie]||0)+1; return acc; },{})
+        ).sort((a,b)=>b[1]-a[1]);
+        const maxD = diseaseRank[0]?.[1] || 1;
+
+        /* Niveau par type */
+        const niveauMap = history.reduce((acc,h)=>{ acc[h.niveau]=(acc[h.niveau]||0)+1; return acc; },{});
+
+        /* Conseil global */
+        const globalTip = healthScore >= 80
+          ? "🌿 Excellente santé globale ! Continuez la surveillance régulière."
+          : healthScore >= 50
+          ? "⚠️ Quelques infections détectées. Appliquez les traitements recommandés et re-analysez dans 48h."
+          : "🚨 Situation critique. Consultez un agronome et isolez les plantes infectées immédiatement.";
+
+        return (<>
+          <div className="section-title">Vue d'ensemble analytique</div>
+
+          {/* KPI row */}
+          <div className="stats-kpi-row">
+            <div className="stats-kpi">
+              <div className="stats-kpi-accent" style={{background:"linear-gradient(90deg,#1db954,#16a34a)"}}/>
+              <div className="stats-kpi-icon">🔬</div>
+              <div className="stats-kpi-val">{total}</div>
+              <div className="stats-kpi-label">Total analyses</div>
+              <div className="stats-kpi-sub" style={{color:"var(--text3)"}}>Session courante</div>
+            </div>
+            <div className="stats-kpi">
+              <div className="stats-kpi-accent" style={{background:"linear-gradient(90deg,#1db954,#059669)"}}/>
+              <div className="stats-kpi-icon">✅</div>
+              <div className="stats-kpi-val" style={{color:"#1db954"}}>{healthy}</div>
+              <div className="stats-kpi-label">Plantes saines</div>
+              <div className="stats-kpi-sub" style={{color:"#1db954"}}>
+                {total ? Math.round(healthy/total*100) : 0}% du total
+              </div>
+            </div>
+            <div className="stats-kpi">
+              <div className="stats-kpi-accent" style={{background:"linear-gradient(90deg,#f59e0b,#d97706)"}}/>
+              <div className="stats-kpi-icon">⚠️</div>
+              <div className="stats-kpi-val" style={{color:"#f59e0b"}}>{sick}</div>
+              <div className="stats-kpi-label">Infectées</div>
+              <div className="stats-kpi-sub" style={{color:"#f59e0b"}}>
+                {total ? Math.round(sick/total*100) : 0}% du total
+              </div>
+            </div>
+            <div className="stats-kpi">
+              <div className="stats-kpi-accent" style={{background:"linear-gradient(90deg,#ef4444,#b91c1c)"}}/>
+              <div className="stats-kpi-icon">🚨</div>
+              <div className="stats-kpi-val" style={{color:"#ef4444"}}>{critical}</div>
+              <div className="stats-kpi-label">Critiques</div>
+              <div className="stats-kpi-sub" style={{color:"#ef4444"}}>
+                {total ? Math.round(critical/total*100) : 0}% du total
+              </div>
+            </div>
+          </div>
+
+          {/* Ligne 1 : Score santé + Donut + Graphique ligne */}
+          <div className="stats-grid-top">
+
+            {/* Graphique ligne historique */}
+            <div className="chart-card">
+              <div className="cc-head">
+                <div className="cc-title">📈 Évolution des analyses (session)</div>
+                <span className="cc-period">Temps réel</span>
+              </div>
+              <div className="cc-sub" style={{marginBottom:"10px"}}>Confiance moyenne des {total} dernières analyses</div>
+              {total === 0
+                ? <div className="empty-box" style={{minHeight:"180px"}}><div className="e-icon">📭</div><p>Lancez des analyses<br/>pour voir l'évolution</p></div>
+                : <div style={{height:"200px"}}><MultiLine
+                    labels={history.slice().reverse().map((_,i)=>`#${i+1}`)}
+                    datasets={[
+                      {label:"Confiance (%)", data:history.slice().reverse().map(h=>h.score), color:"#1db954"},
+                      {label:"Seuil critique (80%)", data:history.map(()=>80), color:"#ef4444"},
+                    ]}
+                    height={200}
+                  /></div>
+              }
+            </div>
+
+            {/* Score de santé global */}
+            <div className="chart-card" style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+              <div className="cc-title" style={{marginBottom:"4px",textAlign:"center"}}>🌿 Score de santé global</div>
+              <div className="cc-sub" style={{textAlign:"center",marginBottom:"12px"}}>Indice phytosanitaire de la session</div>
+              <div className="health-score-ring">
+                <svg width="120" height="120" viewBox="0 0 120 120">
+                  <circle className="ring-bg" cx="60" cy="60" r="52"/>
+                  <circle className="ring-fill"
+                    cx="60" cy="60" r="52"
+                    stroke={scoreColor}
+                    strokeDasharray={circumference}
+                    strokeDashoffset={dashOffset}
+                  />
+                </svg>
+                <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+                  <span style={{fontSize:"1.8rem",fontWeight:900,color:scoreColor,lineHeight:1}}>{healthScore}%</span>
+                  <span style={{fontSize:"0.62rem",color:"var(--text3)",fontWeight:600,marginTop:2}}>SANTÉ</span>
+                </div>
+              </div>
+              <div style={{fontSize:"0.82rem",fontWeight:700,color:scoreColor,marginTop:"4px"}}>
+                {healthScore>=80?"Excellent":healthScore>=60?"Bon":healthScore>=40?"Moyen":"Critique"}
+              </div>
+              <div className="stats-tip" style={{marginTop:"12px",fontSize:"0.72rem"}}>
+                <span>💡</span><span>{globalTip}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Ligne 2 : Classement maladies + Répartition + Capteurs */}
+          <div className="stats-grid-bot">
+
+            {/* Classement maladies */}
+            <div className="chart-card">
+              <div className="cc-title" style={{marginBottom:"2px"}}>🦠 Maladies les plus détectées</div>
+              <div className="cc-sub" style={{marginBottom:"14px"}}>Classement par fréquence</div>
+              {diseaseRank.length === 0
+                ? <div className="empty-box"><div className="e-icon">🔬</div><p>Aucune donnée</p></div>
+                : diseaseRank.map(([name, count], i) => (
+                  <div className="disease-rank-item" key={name}>
+                    <div className={`rank-num ${i===0?"top":""}`}>{i+1}</div>
+                    <div className="rank-name">{name}</div>
+                    <div className="rank-bar-bg">
+                      <div className="rank-bar-fill" style={{
+                        width:`${Math.round(count/maxD*100)}%`,
+                        background: i===0?"#ef4444":i===1?"#f59e0b":"#3b82f6"
+                      }}/>
+                    </div>
+                    <div className="rank-count" style={{
+                      color: i===0?"#ef4444":i===1?"#f59e0b":"#3b82f6"
+                    }}>{count}</div>
+                  </div>
+                ))
+              }
+            </div>
+
+            {/* Donut répartition */}
+            <div className="chart-card">
+              <div className="cc-title" style={{marginBottom:"2px"}}>🥧 Répartition des statuts</div>
+              <div className="cc-sub" style={{marginBottom:"8px"}}>Saine / Infectée / Critique</div>
+              {total === 0
+                ? <div className="empty-box"><div className="e-icon">🔬</div><p>Aucune donnée</p></div>
+                : <div style={{height:"190px"}}><Donut
+                    data={[healthy, sick, critical].filter((_,i)=>[healthy,sick,critical][i]>0)}
+                    labels={["Saines","Infectées","Critiques"].filter((_,i)=>[healthy,sick,critical][i]>0)}
+                    colors={["#1db954","#f59e0b","#ef4444"].filter((_,i)=>[healthy,sick,critical][i]>0)}
+                  /></div>
+              }
+            </div>
+
+            {/* Stats capteurs */}
+            <div className="chart-card">
+              <div className="cc-title" style={{marginBottom:"2px"}}>📡 État actuel ESP32</div>
+              <div className="cc-sub" style={{marginBottom:"14px"}}>Valeurs capteurs en temps réel</div>
+              {[
+                {label:"Température",  val:`${sensors.temp}°C`,  pct:Math.round((sensors.temp-10)/30*100), color:"#f59e0b", icon:"🌡️",
+                  status: sensors.temp<18?"Froid":sensors.temp>32?"Chaud":"Optimal"},
+                {label:"Humidité air", val:`${sensors.humidity}%`, pct:sensors.humidity, color:"#3b82f6", icon:"💧",
+                  status: sensors.humidity<40?"Sec":sensors.humidity>80?"Saturé":"Optimal"},
+                {label:"Humidité sol", val:`${sensors.soil}%`, pct:sensors.soil, color:"#1db954", icon:"🌱",
+                  status: sensors.soil<40?"Sec":sensors.soil>75?"Saturé":"Optimal"},
+                {label:"Luminosité",   val:`${sensors.light}%`,  pct:sensors.light, color:"#eab308", icon:"☀️",
+                  status: sensors.light<30?"Sombre":sensors.light>85?"Fort":"Optimal"},
+              ].map(s=>(
+                <div className="sensor-row" key={s.label}>
+                  <div className="sensor-head">
+                    <span className="sensor-name">{s.icon} {s.label}</span>
+                    <span className="sensor-val" style={{color:s.color}}>{s.val}</span>
+                  </div>
+                  <div className="sensor-bar">
+                    <div className="sensor-fill" style={{width:`${Math.min(100,s.pct)}%`, background:s.color}}/>
+                  </div>
+                  <div style={{fontSize:"0.65rem",color:s.status==="Optimal"?"#1db954":"#f59e0b",fontWeight:700,marginTop:"3px"}}>
+                    {s.status==="Optimal"?"✓ Optimal":"⚠ "+s.status}
+                  </div>
+                </div>
+              ))}
+              <div style={{marginTop:"12px",fontSize:"0.72rem",color:"var(--text3)",borderTop:"1px solid var(--border)",paddingTop:"10px"}}>
+                Confiance moy. IA : <strong style={{color:"var(--green)"}}>{avgConf2}%</strong>
+                {lastAnalysis && <span> · Dernier : <strong style={{color:"var(--text)"}}>{lastAnalysis.maladie}</strong></span>}
+              </div>
+            </div>
+          </div>
+        </>);
+      })()}
 
     </div>
   </div>);
