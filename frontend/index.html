@@ -154,6 +154,102 @@
     .toast.error   { background: #dc2626; }
     @keyframes slideUp { from { opacity:0; transform: translateY(20px); } to { opacity:1; transform: translateY(0); } }
 
+    /* ── Alerte critique ── */
+    .alert-overlay {
+      position: fixed; inset: 0; z-index: 10000;
+      background: rgba(0,0,0,0.55); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+    .alert-modal {
+      background: #fff; border-radius: 20px; padding: 0;
+      width: 420px; max-width: 92vw; overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.25);
+      animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes popIn { from{opacity:0;transform:scale(0.85)} to{opacity:1;transform:scale(1)} }
+
+    .alert-header {
+      padding: 22px 24px 18px;
+      display: flex; align-items: flex-start; gap: 14px;
+    }
+    .alert-header.critical { background: linear-gradient(135deg,#ef4444,#b91c1c); }
+    .alert-header.sick     { background: linear-gradient(135deg,#f59e0b,#d97706); }
+
+    .alert-icon-wrap {
+      width: 52px; height: 52px; border-radius: 14px;
+      background: rgba(255,255,255,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.8rem; flex-shrink: 0;
+      animation: shake 0.5s ease 0.3s;
+    }
+    @keyframes shake {
+      0%,100%{transform:rotate(0)} 20%{transform:rotate(-8deg)} 40%{transform:rotate(8deg)}
+      60%{transform:rotate(-5deg)} 80%{transform:rotate(5deg)}
+    }
+    .alert-header-text h3 { font-size: 1.1rem; font-weight: 800; color: #fff; margin-bottom: 4px; }
+    .alert-header-text p  { font-size: 0.8rem; color: rgba(255,255,255,0.8); line-height: 1.4; }
+
+    .alert-body { padding: 20px 24px; }
+    .alert-disease {
+      font-size: 1.3rem; font-weight: 900; color: #0f172a;
+      margin-bottom: 6px; display: flex; align-items: center; gap: 8px;
+    }
+    .alert-conf {
+      font-size: 0.82rem; color: #64748b; margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .alert-conf-bar { flex:1; height: 6px; background: #f1f5f9; border-radius: 10px; overflow: hidden; }
+    .alert-conf-fill { height: 100%; border-radius: 10px; transition: width 0.8s; }
+    .alert-conseil {
+      background: #fef9c3; border-left: 3px solid #f59e0b;
+      border-radius: 0 8px 8px 0; padding: 10px 14px;
+      font-size: 0.8rem; color: #78350f; line-height: 1.5; margin-bottom: 18px;
+    }
+    .alert-conseil.critical { background: #fee2e2; border-color: #ef4444; color: #7f1d1d; }
+
+    .alert-actions { display: flex; gap: 10px; }
+    .alert-btn-dismiss {
+      flex: 1; padding: 10px; border-radius: 10px; border: 1.5px solid #e2e8f0;
+      background: #fff; color: #475569; font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; transition: all 0.18s;
+    }
+    .alert-btn-dismiss:hover { background: #f8fafc; border-color: #cbd5e1; }
+    .alert-btn-view {
+      flex: 1; padding: 10px; border-radius: 10px; border: none;
+      background: linear-gradient(135deg,#1db954,#16a34a);
+      color: #fff; font-size: 0.85rem; font-weight: 700;
+      cursor: pointer; transition: all 0.18s;
+      box-shadow: 0 2px 8px rgba(29,185,84,0.3);
+    }
+    .alert-btn-view:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(29,185,84,0.4); }
+
+    /* Badge alerte navbar */
+    .alert-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #ef4444; color: #fff;
+      font-size: 0.65rem; font-weight: 800;
+      margin-left: 6px; animation: pulse 1.5s infinite;
+    }
+
+    /* Barre d'alerte sticky */
+    .alert-bar {
+      background: linear-gradient(135deg,#ef4444,#b91c1c);
+      color: #fff; padding: 9px 28px;
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.82rem; font-weight: 600;
+      animation: slideDown 0.3s ease;
+    }
+    @keyframes slideDown { from{opacity:0;transform:translateY(-100%)} to{opacity:1;transform:translateY(0)} }
+    .alert-bar-close {
+      margin-left: auto; background: rgba(255,255,255,0.2); border: none;
+      color: #fff; border-radius: 6px; padding: 2px 8px; cursor: pointer;
+      font-size: 0.78rem; font-weight: 700;
+    }
+
     /* ══════════ LAYOUT ══════════ */
     .page { max-width: 1400px; margin: 0 auto; padding: 28px 32px; }
 
@@ -557,10 +653,16 @@ function App() {
       const data=await res.json();
       setResult(data);
       setHistory(p=>[{id:Date.now(),image:fileName,...data,date:new Date()},...p]);
+      if (data.niveau==="critical") { setAlertModal(data); setAlertBar(data); }
+      else if (data.niveau==="sick") { showToast(`⚠️ Plante infectée détectée : ${data.maladie} (${data.score}%)`,"error"); }
+      else { showToast(`✅ Plante saine — Confiance : ${data.score}%`,"success"); }
     } catch {
       await new Promise(r=>setTimeout(r,1800));
       const data=MOCK[Math.floor(Math.random()*MOCK.length)];
       setResult(data); setHistory(p=>[{id:Date.now(),image:fileName,...data,date:new Date()},...p]);
+      if (data.niveau==="critical") { setAlertModal(data); setAlertBar(data); }
+      else if (data.niveau==="sick") { showToast(`⚠️ Plante infectée : ${data.maladie} (${data.score}%)`,"error"); }
+      else { showToast(`✅ Plante saine — Confiance : ${data.score}%`,"success"); }
     } finally { setLoading(false); }
   };
 
@@ -575,6 +677,9 @@ function App() {
   /* ── Export PDF ── */
   const [pdfLoading, setPdfLoading] = useState(false);
   const [toast, setToast]           = useState(null);
+  const [alertModal, setAlertModal] = useState(null);   // alerte modale
+  const [alertBar,   setAlertBar]   = useState(null);   // barre sticky
+  const alertCount = history.filter(h=>h.niveau==="critical").length;
 
   const showToast = (msg, type="success") => {
     setToast({msg, type});
@@ -739,11 +844,69 @@ function App() {
         ))}
       </div>
       <div className="nav-badge"><span className="pulse-dot"/>ESP32-CAM — Online</div>
+
+      {/* Badge alertes critiques */}
+      {alertCount > 0 && (
+        <div className="nav-badge" style={{background:"rgba(239,68,68,0.12)",borderColor:"#fca5a5",color:"#dc2626",cursor:"pointer"}}
+          onClick={()=>setPage("history")}>
+          🚨 Alertes <span className="alert-badge">{alertCount}</span>
+        </div>
+      )}
+
       <button className="btn-pdf" onClick={exportPDF} disabled={pdfLoading}>
         {pdfLoading ? "⏳ Génération..." : "📄 Exporter PDF"}
       </button>
       <div className="nav-time">{fmtTime(now)}</div>
     </nav>
+
+    {/* Barre d'alerte sticky */}
+    {alertBar && (
+      <div className="alert-bar">
+        <span>🚨</span>
+        <strong>ALERTE CRITIQUE</strong> — {alertBar.maladie} détectée avec {alertBar.score}% de confiance. Action immédiate requise !
+        <button className="alert-bar-close" onClick={()=>setAlertBar(null)}>✕ Fermer</button>
+      </div>
+    )}
+
+    {/* Modal alerte critique */}
+    {alertModal && (
+      <div className="alert-overlay" onClick={()=>setAlertModal(null)}>
+        <div className="alert-modal" onClick={e=>e.stopPropagation()}>
+          <div className={`alert-header ${alertModal.niveau}`}>
+            <div className="alert-icon-wrap">🚨</div>
+            <div className="alert-header-text">
+              <h3>ALERTE — Maladie Critique Détectée !</h3>
+              <p>Le modèle IA a identifié une pathologie sévère nécessitant une intervention immédiate.</p>
+            </div>
+          </div>
+          <div className="alert-body">
+            <div className="alert-disease">
+              {alertModal.maladie}
+            </div>
+            <div className="alert-conf">
+              Confiance du modèle :
+              <div className="alert-conf-bar">
+                <div className="alert-conf-fill" style={{width:`${alertModal.score}%`, background:"#ef4444"}}/>
+              </div>
+              <strong style={{color:"#ef4444"}}>{alertModal.score}%</strong>
+            </div>
+            {alertModal.conseil && (
+              <div className={`alert-conseil ${alertModal.niveau}`}>
+                ⚠️ <strong>Action recommandée :</strong> {alertModal.conseil}
+              </div>
+            )}
+            <div className="alert-actions">
+              <button className="alert-btn-dismiss" onClick={()=>setAlertModal(null)}>
+                Ignorer
+              </button>
+              <button className="alert-btn-view" onClick={()=>{setAlertModal(null);setPage("history");}}>
+                📋 Voir l'historique
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* Toast */}
     {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
