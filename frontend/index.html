@@ -604,7 +604,105 @@
 
     @media (max-width: 1200px) { .charts-row { grid-template-columns: 1fr 1fr; } .hero-grid { grid-template-columns: 1fr 1fr; } }
     @media (max-width: 900px)  { .metrics-row { grid-template-columns: 1fr 1fr; } .bottom-grid { grid-template-columns: 1fr; } .bottom-grid .span2 { grid-column: 1; } }
-    @media (max-width: 600px)  { .hero-grid { grid-template-columns: 1fr; } .page { padding: 16px; } .navbar { padding: 0 16px; } }
+    @media (max-width: 600px)  { .hero-grid { grid-template-columns: 1fr; } .page { padding: 12px; } .navbar { padding: 0 12px; } }
+
+    /* ══════════ RESPONSIVE MOBILE COMPLET ══════════ */
+
+    /* Hamburger button */
+    .nav-hamburger {
+      display: none; flex-direction: column; gap: 5px;
+      background: none; border: none; cursor: pointer; padding: 6px;
+    }
+    .nav-hamburger span {
+      display: block; width: 22px; height: 2.5px; border-radius: 2px;
+      background: var(--text2); transition: all 0.3s;
+    }
+    .nav-hamburger.open span:nth-child(1) { transform: translateY(7.5px) rotate(45deg); }
+    .nav-hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+    .nav-hamburger.open span:nth-child(3) { transform: translateY(-7.5px) rotate(-45deg); }
+
+    /* Menu mobile drawer */
+    .mobile-menu {
+      display: none;
+      position: fixed; top: 64px; left: 0; right: 0; z-index: 998;
+      background: var(--white); border-bottom: 2px solid var(--border);
+      box-shadow: var(--shadow-lg);
+      padding: 12px 16px 16px;
+      animation: slideDown 0.25s ease;
+      flex-direction: column; gap: 6px;
+    }
+    .mobile-menu.open { display: flex; }
+    .mobile-tab {
+      padding: 11px 16px; border-radius: 10px; border: none;
+      background: none; font-size: 0.9rem; font-weight: 600;
+      color: var(--text2); cursor: pointer; text-align: left;
+      transition: all 0.15s; display: flex; align-items: center; gap: 10px;
+    }
+    .mobile-tab:hover  { background: var(--green-pale); color: var(--green-dark); }
+    .mobile-tab.active { background: linear-gradient(135deg,var(--green),var(--green-dark)); color:#fff; }
+    .mobile-menu-sep { height: 1px; background: var(--border); margin: 4px 0; }
+    .mobile-menu-row { display: flex; gap: 8px; }
+    .mobile-menu-row .mobile-tab { flex: 1; justify-content: center; }
+
+    @media (max-width: 768px) {
+      /* Cache les tabs desktop, montre le hamburger */
+      .nav-tabs         { display: none !important; }
+      .nav-badge        { display: none !important; }
+      .nav-time         { display: none !important; }
+      .btn-pdf          { display: none !important; }
+      .btn-theme        { display: none !important; }
+      .nav-profile-name, .nav-profile-role, .nav-chevron { display: none !important; }
+      .nav-profile-btn  { padding: 4px; border-radius: 50%; }
+      .nav-hamburger    { display: flex; }
+
+      /* Page layout */
+      .page { padding: 12px; }
+      .hero-grid { grid-template-columns: 1fr !important; }
+      .metrics-row { grid-template-columns: 1fr 1fr; }
+      .charts-row  { grid-template-columns: 1fr !important; }
+      .bottom-grid { grid-template-columns: 1fr !important; }
+      .bottom-grid .span2 { grid-column: 1; }
+      .stats-kpi-row { grid-template-columns: 1fr 1fr; }
+      .stats-grid-top, .stats-grid-bot { grid-template-columns: 1fr !important; }
+
+      /* Cartes héro : réduire padding */
+      .hero-banner { padding: 18px 18px; }
+      .hb-value    { font-size: 1.6rem; }
+      .hb-conf-val { font-size: 2rem; }
+
+      /* Navbar */
+      .navbar { height: 56px; padding: 0 14px; gap: 10px; }
+      .nav-logo { width: 30px; height: 30px; font-size: 0.9rem; }
+      .nav-title { font-size: 0.7rem; }
+      .nav-subtitle { display: none; }
+
+      /* Profile dropdown — plein écran sur mobile */
+      .profile-dropdown { left: 8px; right: 8px; width: auto; }
+
+      /* Table scroll horizontal */
+      .tbl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      table { min-width: 580px; }
+
+      /* Charts hauteur réduite */
+      .chart-wrap-md { height: 160px; }
+      .sparkline-wrap { height: 55px; }
+
+      /* Upload zone */
+      .upload-zone { padding: 18px 12px; }
+
+      /* Alert modal */
+      .alert-modal { width: 95vw; }
+
+      /* Stats KPI text */
+      .stats-kpi-val { font-size: 1.7rem; }
+    }
+
+    @media (max-width: 420px) {
+      .metrics-row  { grid-template-columns: 1fr; }
+      .stats-kpi-row { grid-template-columns: 1fr; }
+      .hb-value { font-size: 1.4rem; }
+      .metric-val { font-size: 1.3rem; }
+    }
 
     /* ══════════ SPLASH SCREEN ══════════ */
     .splash {
@@ -1453,6 +1551,9 @@ function App() {
 
   const TABS = [{id:"dashboard",label:"📊 Dashboard"},{id:"analyse",label:"🔍 Analyser"},{id:"history",label:"🗂️ Historique"},{id:"stats",label:"📈 Statistiques"}];
 
+  /* ── Mobile menu ── */
+  const [menuOpen, setMenuOpen] = useState(false);
+
   /* ── Profil ── */
   const [profileOpen, setProfileOpen] = useState(false);
   const userName   = userEmail ? userEmail.split("@")[0].replace(/[._]/g," ").replace(/\b\w/g,c=>c.toUpperCase()) : "Étudiant";
@@ -1645,6 +1746,11 @@ function App() {
           <div className="nav-subtitle">Détection intelligente des maladies</div>
         </div>
       </div>
+      {/* Hamburger mobile */}
+      <button className={`nav-hamburger ${menuOpen?"open":""}`} onClick={()=>setMenuOpen(p=>!p)} aria-label="Menu">
+        <span/><span/><span/>
+      </button>
+
       <div className="nav-sep"/>
       <div className="nav-tabs">
         {TABS.map(t=>(
@@ -1735,6 +1841,31 @@ function App() {
         )}
       </div>
     </nav>
+
+    {/* ══ MENU MOBILE ══ */}
+    <div className={`mobile-menu ${menuOpen?"open":""}`}>
+      {TABS.map(t=>(
+        <button key={t.id} className={`mobile-tab ${page===t.id?"active":""}`}
+          onClick={()=>{ setPage(t.id); setMenuOpen(false); }}>
+          {t.label}
+        </button>
+      ))}
+      <div className="mobile-menu-sep"/>
+      <div className="mobile-menu-row">
+        <button className="mobile-tab" onClick={()=>{ setDarkMode(p=>!p); setMenuOpen(false); }}>
+          {darkMode?"☀️ Mode clair":"🌙 Mode sombre"}
+        </button>
+        <button className="mobile-tab" style={{color:"#dc2626"}}
+          onClick={()=>{ setMenuOpen(false); exportPDF(); }}>
+          📄 PDF
+        </button>
+      </div>
+      <div className="mobile-menu-sep"/>
+      <button className="mobile-tab" style={{color:"#dc2626"}}
+        onClick={()=>{ setMenuOpen(false); setIsLoggedIn(false); setUserEmail(""); }}>
+        🚪 Se déconnecter
+      </button>
+    </div>
 
     {/* Barre d'alerte sticky */}
     {alertBar && (
