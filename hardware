@@ -1,0 +1,126 @@
+// ============================================================
+//  ESP32-CAM COMPLET — Image + Temp + Humidité → API
+//  Pôle 1 — Version finale
+// ============================================================
+#include "esp_camera.h"
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <DHT.h>
+
+const char* ssid      = "NOM_WIFI";
+const char* password  = "MOT_DE_PASSE_WIFI";
+const char* serverURL = "http://192.168.1.XX:5000/predict";
+
+#define DHTPIN  12
+#define DHTTYPE DHT22
+DHT dht(DHTPIN, DHTTYPE);
+
+// Pins caméra AI Thinker
+#define PWDN_GPIO_NUM     32
+#define RESET_GPIO_NUM    -1
+#define XCLK_GPIO_NUM      0
+#define SIOD_GPIO_NUM     26
+#define SIOC_GPIO_NUM     27
+#define Y9_GPIO_NUM       35
+#define Y8_GPIO_NUM       34
+#define Y7_GPIO_NUM       39
+#define Y6_GPIO_NUM       36
+#define Y5_GPIO_NUM       21
+#define Y4_GPIO_NUM       19
+#define Y3_GPIO_NUM       18
+#define Y2_GPIO_NUM        5
+#define VSYNC_GPIO_NUM    25
+#define HREF_GPIO_NUM     23
+#define PCLK_GPIO_NUM     22
+
+void initCamera() {
+  camera_config_t config;
+  config.ledc_channel = LEDC_CHANNEL_0;
+  config.ledc_timer   = LEDC_TIMER_0;
+  config.pin_d0 = Y2_GPIO_NUM;
+  config.pin_d1 = Y3_GPIO_NUM;
+  config.pin_d2 = Y4_GPIO_NUM;
+  config.pin_d3 = Y5_GPIO_NUM;
+  config.pin_d4 = Y6_GPIO_NUM;
+  config.pin_d5 = Y7_GPIO_NUM;
+  config.pin_d6 = Y8_GPIO_NUM;
+  config.pin_d7 = Y9_GPIO_NUM;
+  config.pin_xclk     = XCLK_GPIO_NUM;
+  config.pin_pclk     = PCLK_GPIO_NUM;
+  config.pin_vsync    = VSYNC_GPIO_NUM;
+  config.pin_href     = HREF_GPIO_NUM;
+  config.pin_sscb_sda = SIOD_GPIO_NUM;
+  config.pin_sscb_scl = SIOC_GPIO_NUM;
+  config.pin_pwdn     = PWDN_GPIO_NUM;
+  config.pin_reset    = RESET_GPIO_NUM;
+  config.xclk_freq_hz = 20000000;
+  config.pixel_format = PIXFORMAT_JPEG;
+  config.frame_size   = FRAMESIZE_VGA;
+  config.jpeg_quality = 12;
+  config.fb_count     = 1;
+
+  if (esp_camera_init(&config) != ESP_OK) {
+    Serial.println("Erreur caméra !");
+    ESP.restart();
+  }
+  Serial.println("Caméra OK !");
+}
+
+void envoyerDonnees() {
+  float temp = dht.readTemperature();
+  float hum  = dht.readHumidity();
+
+  camera_fb_t* fb = esp_camera_fb_get();
+  if (!fb) { Serial.println("Erreur caméra"); return; }
+
+  String boundary = "----ESP32Boundary";
+  String bodyStart =
+    "--" + boundary + "\r\n"
+    "Content-Disposition: form-data; name=\"image\"; filename=\"feuille.jpg\"\r\n"
+    "Content-Type: image/jpeg\r\n\r\n";
+
+  String bodyEnd =
+    "\r\n--" + boundary + "\r\n"
+    "Content-Disposition: form-data; name=\"temperature\"\r\n\r\n"
+    + String(temp) + "\r\n"
+    "--" + boundary + "\r\n"
+    "Content-Disposition: form-data; name=\"humidite\"\r\n\r\n"
+    + String(hum) + "\r\n"
+    "--" + boundary + "--\r\n";
+
+  size_t totalLen = bodyStart.length() + fb->len + bodyEnd.length();
+  uint8_t* body   = (uint8_t*)malloc(totalLen);
+  memcpy(body, bodyStart.c_str(), bodyStart.length());
+  memcpy(body + bodyStart.length(), fb->buf, fb->len);
+  memcpy(body + bodyStart.length() + fb->len, bodyEnd.c_str(), bodyEnd.length());
+
+  HTTPClient http;
+  http.begin(serverURL);
+  http.addHeader("Content-Type", "multipart/form-data; boundary=" + boundary);
+  int code = http.POST(body, totalLen);
+
+  Serial.printf("HTTP %d | Temp: %.1f°C | Hum: %.1f%%\n", code, temp, hum);
+
+  free(body);
+  esp_camera_fb_return(fb);
+  http.end();
+}
+
+void setup() {
+  Serial.begin(115200);
+  dht.begin();
+  initCamera();
+
+  WiFi.begin(ssid, password);
+  Serial.print("Connexion WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nConnecté ! IP : " + WiFi.localIP().toString());
+}
+
+void loop() {
+  envoyerDonnees();
+  delay(15000); // toutes les 15 secondes
+}
