@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🌿 Détection des Maladies des Plantes</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f7f0; color: #1a2e1a; min-height: 100vh; }
+
+    /* HEADER */
+    .header {
+      background: linear-gradient(135deg, #1b5e20, #2e7d32, #388e3c);
+      color: white; padding: 20px 32px;
+      display: flex; align-items: center; gap: 14px;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.2);
+    }
+    .header-icon { font-size: 2.2rem; }
+    .header h1 { font-size: 1.5rem; font-weight: 700; }
+    .header p  { font-size: 0.85rem; opacity: 0.85; margin-top: 2px; }
+    .status-badge {
+      margin-left: auto;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 20px; padding: 5px 14px; font-size: 0.78rem;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #a5d6a7; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* LAYOUT */
+    .main { max-width: 1100px; margin: 32px auto; padding: 0 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 768px) { .main { grid-template-columns: 1fr; } }
+
+    /* CARDS */
+    .card { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 2px 16px rgba(0,0,0,0.07); border: 1px solid #e8f5e9; }
+    .card-title { font-size: 1rem; font-weight: 700; color: #2e7d32; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+
+    /* UPLOAD */
+    .upload-zone {
+      border: 2.5px dashed #a5d6a7; border-radius: 12px; padding: 36px 20px;
+      text-align: center; cursor: pointer; transition: all 0.25s;
+      background: #f9fdf9; position: relative;
+    }
+    .upload-zone:hover, .upload-zone.drag-over { border-color: #2e7d32; background: #e8f5e9; }
+    .upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .upload-icon { font-size: 2.8rem; margin-bottom: 10px; }
+    .upload-zone p { color: #555; font-size: 0.9rem; line-height: 1.5; }
+    .upload-zone strong { color: #2e7d32; }
+    .preview-img { width: 100%; max-height: 220px; object-fit: cover; border-radius: 10px; margin-top: 16px; border: 2px solid #c8e6c9; }
+
+    .btn-analyze {
+      width: 100%; margin-top: 16px; padding: 13px;
+      background: linear-gradient(135deg, #2e7d32, #388e3c);
+      color: white; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-analyze:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(46,125,50,0.4); }
+    .btn-analyze:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .spinner { width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* RESULT */
+    .result-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: #aaa; gap: 10px; font-size: 0.9rem; }
+    .result-empty span { font-size: 2.5rem; }
+    .result-box { border-radius: 12px; overflow: hidden; border: 1px solid #c8e6c9; }
+    .result-header { padding: 14px 18px; font-weight: 700; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; }
+    .result-header.healthy  { background: #e8f5e9; color: #2e7d32; }
+    .result-header.sick     { background: #fff3e0; color: #e65100; }
+    .result-header.critical { background: #fce4ec; color: #c62828; }
+    .result-body { padding: 18px; }
+    .result-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 0.9rem; }
+    .result-label { color: #777; }
+    .result-value { font-weight: 600; color: #1a2e1a; }
+    .confidence-bar-bg { background: #e0e0e0; border-radius: 20px; height: 10px; flex: 1; margin: 0 12px; overflow: hidden; }
+    .confidence-bar-fill { height: 100%; border-radius: 20px; transition: width 0.8s ease; }
+    .result-advice { margin-top: 14px; background: #f1f8e9; border-left: 4px solid #7cb342; border-radius: 0 8px 8px 0; padding: 12px 14px; font-size: 0.85rem; color: #33691e; line-height: 1.5; }
+
+    /* ERROR BANNER */
+    .error-banner { background: #fce4ec; border: 1px solid #f48fb1; border-radius: 10px; padding: 12px 16px; color: #c62828; font-size: 0.87rem; margin-top: 12px; }
+
+    /* HISTORY */
+    .history-card { grid-column: 1 / -1; }
+    .history-empty { text-align: center; color: #aaa; padding: 30px; font-size: 0.9rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    thead th { background: #e8f5e9; color: #2e7d32; font-weight: 700; text-align: left; padding: 10px 14px; }
+    thead th:first-child { border-radius: 8px 0 0 0; }
+    thead th:last-child  { border-radius: 0 8px 0 0; }
+    tbody tr { border-bottom: 1px solid #f0f7f0; transition: background 0.15s; }
+    tbody tr:hover { background: #f9fdf9; }
+    tbody td { padding: 11px 14px; }
+    .tag { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; }
+    .tag-healthy  { background: #e8f5e9; color: #2e7d32; }
+    .tag-sick     { background: #fff3e0; color: #e65100; }
+    .tag-critical { background: #fce4ec; color: #c62828; }
+    .btn-clear { float: right; margin-bottom: 12px; padding: 6px 14px; background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; border-radius: 8px; font-size: 0.8rem; cursor: pointer; transition: background 0.2s; }
+    .btn-clear:hover { background: #ffcdd2; }
+
+    /* FOOTER */
+    .footer { text-align: center; padding: 24px; color: #999; font-size: 0.8rem; }
+    .footer strong { color: #2e7d32; }
+    code { background: #e8f5e9; padding: 1px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useRef } = React;
+
+/* ── URL de l'API backend ── */
+const API_URL = "http://localhost:5000";
+
+function getBarColor(niveau) {
+  if (niveau === "healthy")  return "#4caf50";
+  if (niveau === "critical") return "#e53935";
+  return "#ff9800";
+}
+
+function formatDate(d) {
+  return d.toLocaleDateString("fr-FR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" });
+}
+
+function App() {
+  const [imageSrc, setImageSrc] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [fileName, setFileName]   = useState(null);
+  const [loading, setLoading]     = useState(false);
+  const [result, setResult]       = useState(null);
+  const [history, setHistory]     = useState([]);
+  const [dragOver, setDragOver]   = useState(false);
+  const [error, setError]         = useState(null);
+  const fileInputRef = useRef();
+
+  const loadImage = (file) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    setImageFile(file);
+    setFileName(file.name);
+    setResult(null);
+    setError(null);
+    const reader = new FileReader();
+    reader.onload = (e) => setImageSrc(e.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  const onFileChange = (e) => loadImage(e.target.files[0]);
+  const onDrop       = (e) => { e.preventDefault(); setDragOver(false); loadImage(e.dataTransfer.files[0]); };
+  const onDragOver   = (e) => { e.preventDefault(); setDragOver(true); };
+  const onDragLeave  = () => setDragOver(false);
+
+  const analyzeImage = async () => {
+    if (!imageFile) return;
+    setLoading(true);
+    setResult(null);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("image", imageFile);
+
+      const response = await fetch(`${API_URL}/predict`, {
+        method: "POST",
+        body: formData
+      });
+
+      if (!response.ok) throw new Error(`Erreur serveur : ${response.status}`);
+      const data = await response.json();
+
+      setResult(data);
+      setHistory(prev => [
+        { id: Date.now(), image: fileName, ...data, date: new Date() },
+        ...prev
+      ]);
+    } catch (err) {
+      setError("Impossible de contacter l'API. Vérifiez que le backend est démarré sur " + API_URL);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <header className="header">
+        <span className="header-icon">🌿</span>
+        <div>
+          <h1>Détection des Maladies des Plantes</h1>
+          <p>Projet Tutoré — Détection intelligente par IA (CNN / YOLO)</p>
+        </div>
+        <div className="status-badge">
+          <span className="dot" />
+          Système actif
+        </div>
+      </header>
+
+      <main className="main">
+
+        {/* UPLOAD */}
+        <div className="card">
+          <div className="card-title">📷 Soumettre une Image</div>
+          <div
+            className={`upload-zone ${dragOver ? "drag-over" : ""}`}
+            onDrop={onDrop} onDragOver={onDragOver} onDragLeave={onDragLeave}
+            onClick={() => fileInputRef.current.click()}
+          >
+            <input type="file" accept="image/*" ref={fileInputRef} onChange={onFileChange} />
+            {imageSrc ? (
+              <img src={imageSrc} className="preview-img" alt="Aperçu" />
+            ) : (
+              <>
+                <div className="upload-icon">🍃</div>
+                <p>
+                  <strong>Glissez-déposez</strong> une image ici<br/>
+                  ou <strong>cliquez</strong> pour sélectionner<br/>
+                  <small style={{color:"#aaa"}}>JPG, PNG, WEBP acceptés</small>
+                </p>
+              </>
+            )}
+          </div>
+
+          {fileName && (
+            <p style={{fontSize:"0.8rem",color:"#777",marginTop:"8px",textAlign:"center"}}>📎 {fileName}</p>
+          )}
+
+          <button className="btn-analyze" onClick={analyzeImage} disabled={!imageSrc || loading}>
+            {loading ? <><div className="spinner"/> Analyse en cours...</> : <>🔍 Analyser l'image</>}
+          </button>
+
+          {error && <div className="error-banner">⚠️ {error}</div>}
+        </div>
+
+        {/* RÉSULTAT */}
+        <div className="card">
+          <div className="card-title">🧠 Résultat de l'IA</div>
+
+          {!result && !loading && (
+            <div className="result-empty">
+              <span>🌱</span>
+              <p>Le résultat s'affichera ici<br/>après l'analyse d'une image.</p>
+            </div>
+          )}
+
+          {loading && (
+            <div className="result-empty">
+              <span>⏳</span>
+              <p>Analyse en cours...<br/><small>Le modèle examine votre image</small></p>
+            </div>
+          )}
+
+          {result && !loading && (
+            <div className="result-box">
+              <div className={`result-header ${result.niveau}`}>
+                {result.niveau === "healthy"  && "✅"}
+                {result.niveau === "sick"     && "⚠️"}
+                {result.niveau === "critical" && "🚨"}
+                &nbsp;{result.maladie}
+              </div>
+              <div className="result-body">
+                <div className="result-row">
+                  <span className="result-label">Niveau de confiance</span>
+                  <div className="confidence-bar-bg">
+                    <div className="confidence-bar-fill" style={{width:`${result.score}%`, background: getBarColor(result.niveau)}} />
+                  </div>
+                  <span className="result-value">{result.score}%</span>
+                </div>
+                <div className="result-row">
+                  <span className="result-label">Statut</span>
+                  <span className={`tag tag-${result.niveau}`}>
+                    {result.niveau === "healthy"  ? "Saine" : result.niveau === "sick" ? "Infectée" : "Critique"}
+                  </span>
+                </div>
+                {result.conseil && (
+                  <div className="result-advice">💡 <strong>Conseil :</strong> {result.conseil}</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* HISTORIQUE */}
+        <div className="card history-card">
+          <div className="card-title">🗂️ Historique des Analyses</div>
+          {history.length > 0 && (
+            <button className="btn-clear" onClick={() => setHistory([])}>🗑 Vider l'historique</button>
+          )}
+          {history.length === 0 ? (
+            <div className="history-empty">Aucune analyse effectuée pour l'instant.</div>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th><th>Image</th><th>Maladie détectée</th>
+                  <th>Confiance</th><th>Statut</th><th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((h, i) => (
+                  <tr key={h.id}>
+                    <td style={{color:"#aaa"}}>{history.length - i}</td>
+                    <td>🖼 {h.image || "image.jpg"}</td>
+                    <td><strong>{h.maladie}</strong></td>
+                    <td><span style={{color: getBarColor(h.niveau), fontWeight:700}}>{h.score}%</span></td>
+                    <td>
+                      <span className={`tag tag-${h.niveau}`}>
+                        {h.niveau === "healthy" ? "Saine" : h.niveau === "sick" ? "Infectée" : "Critique"}
+                      </span>
+                    </td>
+                    <td style={{color:"#888"}}>{formatDate(h.date)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </main>
+
+      <footer className="footer">
+        Projet Tutoré &nbsp;·&nbsp; <strong>Détection intelligente des maladies des plantes</strong>
+        &nbsp;·&nbsp; API : <code>{API_URL}/predict</code>
+      </footer>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
