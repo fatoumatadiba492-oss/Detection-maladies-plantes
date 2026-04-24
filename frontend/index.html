@@ -457,6 +457,79 @@
     .pill-critical { background: #fee2e2; color: #991b1b; }
     .rc-advice { margin-top: 10px; background: var(--green-pale); border-left: 3px solid var(--green); border-radius: 0 8px 8px 0; padding: 9px 12px; font-size: 0.76rem; color: var(--green-deep); line-height: 1.5; }
 
+    /* ══════════ ANNOTATIONS ══════════ */
+    .note-modal-overlay {
+      position: fixed; inset: 0; z-index: 10000;
+      background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      animation: fadeIn 0.2s ease;
+    }
+    .note-modal {
+      background: #fff; border-radius: 18px; width: 460px; max-width: 92vw;
+      overflow: hidden; box-shadow: 0 24px 64px rgba(0,0,0,0.2);
+      animation: popIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .note-modal-head {
+      padding: 18px 22px 14px;
+      border-bottom: 1.5px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .note-modal-title { font-size: 0.95rem; font-weight: 800; color: var(--text); }
+    .note-modal-sub   { font-size: 0.73rem; color: var(--text3); margin-top: 2px; }
+    .note-modal-close {
+      width: 28px; height: 28px; border-radius: 8px; border: 1.5px solid var(--border);
+      background: #fff; cursor: pointer; font-size: 0.9rem; color: var(--text2);
+      display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+    }
+    .note-modal-close:hover { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
+    .note-modal-body { padding: 18px 22px; }
+    .note-disease-info {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+      background: var(--bg); border-radius: 10px; padding: 10px 14px;
+    }
+    .note-disease-icon { font-size: 1.3rem; }
+    .note-disease-name { font-weight: 700; color: var(--text); font-size: 0.88rem; }
+    .note-disease-date { font-size: 0.72rem; color: var(--text3); margin-top: 2px; }
+    .note-textarea {
+      width: 100%; min-height: 110px; padding: 12px 14px;
+      border: 1.5px solid var(--border); border-radius: 10px;
+      font-size: 0.85rem; font-family: 'Inter', sans-serif;
+      color: var(--text); resize: vertical; transition: border-color 0.18s;
+      outline: none; background: #fff;
+    }
+    .note-textarea:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(29,185,84,0.1); }
+    .note-textarea::placeholder { color: var(--text3); }
+    .note-char-count { text-align: right; font-size: 0.68rem; color: var(--text3); margin-top: 4px; }
+    .note-actions { display: flex; gap: 10px; margin-top: 14px; }
+    .note-btn-cancel {
+      flex:1; padding: 10px; border-radius: 10px; border: 1.5px solid var(--border);
+      background: #fff; color: var(--text2); font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .note-btn-cancel:hover { background: var(--bg); }
+    .note-btn-save {
+      flex:1; padding: 10px; border-radius: 10px; border: none;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      color: #fff; font-size: 0.85rem; font-weight: 700; cursor: pointer;
+      transition: all 0.18s; box-shadow: 0 2px 8px rgba(29,185,84,0.3);
+    }
+    .note-btn-save:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(29,185,84,0.4); }
+
+    /* Note inline dans le tableau */
+    .note-inline {
+      font-size: 0.72rem; color: var(--text2); margin-top: 4px;
+      background: #fef9c3; border-radius: 5px; padding: 3px 7px;
+      border-left: 2px solid var(--orange); max-width: 200px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .btn-note {
+      padding: 3px 9px; border-radius: 7px; border: 1.5px solid var(--border);
+      background: #fff; color: var(--text3); font-size: 0.7rem; font-weight: 600;
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .btn-note:hover { background: var(--green-pale); border-color: var(--green); color: var(--green-dark); }
+    .btn-note.has-note { background: #fef9c3; border-color: #f59e0b; color: #92400e; }
+
     /* ══════════ TABLE ══════════ */
     .tbl-scroll { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 0.79rem; }
@@ -677,9 +750,25 @@ function App() {
   /* ── Export PDF ── */
   const [pdfLoading, setPdfLoading] = useState(false);
   const [toast, setToast]           = useState(null);
-  const [alertModal, setAlertModal] = useState(null);   // alerte modale
-  const [alertBar,   setAlertBar]   = useState(null);   // barre sticky
+  const [alertModal, setAlertModal] = useState(null);
+  const [alertBar,   setAlertBar]   = useState(null);
   const alertCount = history.filter(h=>h.niveau==="critical").length;
+
+  // Annotations
+  const [noteModal,  setNoteModal]  = useState(null);   // {id, maladie, date, note}
+  const [noteDraft,  setNoteDraft]  = useState("");
+
+  const openNote = (h) => { setNoteModal(h); setNoteDraft(h.note||""); };
+  const saveNote = () => {
+    setHistory(p => p.map(h => h.id===noteModal.id ? {...h, note: noteDraft.trim()} : h));
+    showToast("📝 Note enregistrée !");
+    setNoteModal(null);
+  };
+  const deleteNote = () => {
+    setHistory(p => p.map(h => h.id===noteModal.id ? {...h, note:""} : h));
+    showToast("🗑 Note supprimée");
+    setNoteModal(null);
+  };
 
   const showToast = (msg, type="success") => {
     setToast({msg, type});
@@ -782,7 +871,7 @@ function App() {
         doc.text("Historique des Analyses", 14, y); y += 6;
         doc.autoTable({
           startY: y,
-          head: [["#","Image","Maladie détectée","Confiance","Statut","Date"]],
+          head: [["#","Image","Maladie détectée","Confiance","Statut","Date","Note"]],
           body: history.map((h,i) => [
             String(history.length-i),
             h.image||"image.jpg",
@@ -790,6 +879,7 @@ function App() {
             `${h.score}%`,
             h.niveau==="healthy"?"✓ Saine":h.niveau==="sick"?"⚠ Infectée":"✕ Critique",
             h.date.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}),
+            h.note||"—",
           ]),
           theme: "striped",
           headStyles: { fillColor:[15,23,42], textColor:255, fontStyle:"bold", fontSize:8 },
@@ -901,6 +991,51 @@ function App() {
               </button>
               <button className="alert-btn-view" onClick={()=>{setAlertModal(null);setPage("history");}}>
                 📋 Voir l'historique
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Modal annotation */}
+    {noteModal && (
+      <div className="note-modal-overlay" onClick={()=>setNoteModal(null)}>
+        <div className="note-modal" onClick={e=>e.stopPropagation()}>
+          <div className="note-modal-head">
+            <div>
+              <div className="note-modal-title">📝 Annoter l'analyse</div>
+              <div className="note-modal-sub">Ajoute une note personnelle sur ce résultat</div>
+            </div>
+            <button className="note-modal-close" onClick={()=>setNoteModal(null)}>✕</button>
+          </div>
+          <div className="note-modal-body">
+            <div className="note-disease-info">
+              <span className="note-disease-icon">
+                {noteModal.niveau==="healthy"?"✅":noteModal.niveau==="sick"?"⚠️":"🚨"}
+              </span>
+              <div>
+                <div className="note-disease-name">{noteModal.maladie}</div>
+                <div className="note-disease-date">{fmtFull(noteModal.date)} · Confiance : {noteModal.score}%</div>
+              </div>
+            </div>
+            <textarea
+              className="note-textarea"
+              placeholder="Ex : Feuille prélevée dans la parcelle B3 — traitement au cuivre appliqué le lendemain..."
+              value={noteDraft}
+              onChange={e=>setNoteDraft(e.target.value.slice(0,300))}
+              autoFocus
+            />
+            <div className="note-char-count">{noteDraft.length} / 300 caractères</div>
+            <div className="note-actions">
+              {noteModal.note && (
+                <button className="note-btn-cancel" style={{color:"#dc2626",borderColor:"#fca5a5"}} onClick={deleteNote}>
+                  🗑 Supprimer
+                </button>
+              )}
+              <button className="note-btn-cancel" onClick={()=>setNoteModal(null)}>Annuler</button>
+              <button className="note-btn-save" onClick={saveNote} disabled={!noteDraft.trim()}>
+                💾 Enregistrer
               </button>
             </div>
           </div>
@@ -1125,7 +1260,7 @@ function App() {
           {total===0
             ?<div className="empty-box"><div className="e-icon">📭</div><p>Aucune analyse.<br/><span className="e-link" onClick={()=>setPage("analyse")}>→ Lancer une analyse</span></p></div>
             :<div className="tbl-scroll"><table>
-              <thead><tr><th>#</th><th>Image</th><th>Maladie</th><th>Confiance</th><th>Statut</th><th>Date</th></tr></thead>
+              <thead><tr><th>#</th><th>Image</th><th>Maladie</th><th>Confiance</th><th>Statut</th><th>Date</th><th>Note</th></tr></thead>
               <tbody>
                 {history.map((h,i)=>(
                   <tr key={h.id}>
@@ -1140,6 +1275,12 @@ function App() {
                     </td>
                     <td><span className={`pill pill-${h.niveau}`}>{h.niveau==="healthy"?"Saine":h.niveau==="sick"?"Infectée":"Critique"}</span></td>
                     <td style={{color:"var(--text3)",fontSize:"0.72rem"}}>{fmtFull(h.date)}</td>
+                    <td>
+                      <button className={`btn-note ${h.note?"has-note":""}`} onClick={()=>openNote(h)}>
+                        {h.note ? "✏️ Voir" : "+ Note"}
+                      </button>
+                      {h.note && <div className="note-inline" title={h.note}>📝 {h.note}</div>}
+                    </td>
                   </tr>
                 ))}
               </tbody>
