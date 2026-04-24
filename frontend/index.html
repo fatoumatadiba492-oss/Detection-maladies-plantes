@@ -35,6 +35,42 @@
       --shadow-green: 0 8px 32px rgba(29,185,84,0.22);
     }
 
+    /* ══════════ MODE SOMBRE ══════════ */
+    body.dark {
+      --bg:         #0f1117;
+      --white:      #1a1d27;
+      --border:     #2a2d3a;
+      --border2:    #3a3d4a;
+      --text:       #f1f5f9;
+      --text2:      #94a3b8;
+      --text3:      #475569;
+      --green-pale: #0d2e1a;
+      --green-mid:  #0a2015;
+      --shadow-sm:  0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+      --shadow:     0 4px 16px rgba(0,0,0,0.4);
+      --shadow-lg:  0 12px 40px rgba(0,0,0,0.5);
+    }
+    body.dark ::-webkit-scrollbar-track { background: #1a1d27; }
+    body.dark ::-webkit-scrollbar-thumb { background: #2a2d3a; }
+
+    /* Bouton dark mode toggle */
+    .btn-theme {
+      width: 38px; height: 38px; border-radius: 10px;
+      border: 1.5px solid var(--border); background: var(--white);
+      color: var(--text2); font-size: 1.05rem;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; flex-shrink: 0;
+    }
+    .btn-theme:hover { background: var(--green-pale); border-color: var(--green); transform: rotate(15deg) scale(1.05); }
+
+    /* Transition douce sur tout le body */
+    body { transition: background 0.3s, color 0.3s; }
+    .navbar, .chart-card, .metric-card, .hero-banner, .upload-zone,
+    .alert-modal, .note-modal, .result-card, .rc-body, .login-right,
+    .login-input, .note-textarea {
+      transition: background 0.3s, border-color 0.3s, color 0.3s, box-shadow 0.3s;
+    }
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; }
     body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
@@ -569,6 +605,287 @@
     @media (max-width: 1200px) { .charts-row { grid-template-columns: 1fr 1fr; } .hero-grid { grid-template-columns: 1fr 1fr; } }
     @media (max-width: 900px)  { .metrics-row { grid-template-columns: 1fr 1fr; } .bottom-grid { grid-template-columns: 1fr; } .bottom-grid .span2 { grid-column: 1; } }
     @media (max-width: 600px)  { .hero-grid { grid-template-columns: 1fr; } .page { padding: 16px; } .navbar { padding: 0 16px; } }
+
+    /* ══════════ SPLASH SCREEN ══════════ */
+    .splash {
+      position: fixed; inset: 0; z-index: 99999;
+      background: linear-gradient(160deg, #0d6e2e 0%, #1db954 55%, #16a34a 100%);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    .splash.fade-out {
+      animation: splashFadeOut 0.7s ease forwards;
+    }
+    @keyframes splashFadeOut {
+      from { opacity:1; transform: scale(1); }
+      to   { opacity:0; transform: scale(1.04); }
+    }
+
+    /* Cercles décoratifs */
+    .splash-circle {
+      position: absolute; border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      animation: splashPulse 3s ease-in-out infinite;
+    }
+    .splash-circle.c1 { width:500px; height:500px; top:-120px; right:-120px; animation-delay:0s; }
+    .splash-circle.c2 { width:320px; height:320px; bottom:-80px; left:-80px; animation-delay:0.5s; }
+    .splash-circle.c3 { width:200px; height:200px; top:60px; left:60px; animation-delay:1s; }
+    @keyframes splashPulse {
+      0%,100% { transform: scale(1); opacity:0.6; }
+      50%      { transform: scale(1.08); opacity:1; }
+    }
+
+    /* Logo central */
+    .splash-logo {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column; align-items: center; gap: 20px;
+      animation: splashLogoIn 0.8s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    }
+    @keyframes splashLogoIn {
+      from { opacity:0; transform: scale(0.5) translateY(30px); }
+      to   { opacity:1; transform: scale(1) translateY(0); }
+    }
+    .splash-icon-wrap {
+      width: 110px; height: 110px; border-radius: 28px;
+      background: rgba(255,255,255,0.18);
+      border: 2px solid rgba(255,255,255,0.35);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 3.8rem;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.3);
+      animation: splashIconFloat 2s ease-in-out infinite 0.8s;
+    }
+    @keyframes splashIconFloat {
+      0%,100% { transform: translateY(0) rotate(0deg); }
+      50%      { transform: translateY(-10px) rotate(3deg); }
+    }
+    .splash-title {
+      font-size: 2.8rem; font-weight: 900; color: #fff;
+      letter-spacing: -1px; text-align: center;
+      text-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      animation: splashTextIn 0.6s ease 0.3s both;
+    }
+    .splash-subtitle {
+      font-size: 1rem; color: rgba(255,255,255,0.8); font-weight: 500;
+      text-align: center; letter-spacing: 0.5px;
+      animation: splashTextIn 0.6s ease 0.5s both;
+    }
+    @keyframes splashTextIn {
+      from { opacity:0; transform: translateY(15px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+
+    /* Barre de chargement */
+    .splash-bar-wrap {
+      position: relative; z-index: 1; margin-top: 40px;
+      width: 220px;
+      animation: splashTextIn 0.6s ease 0.7s both;
+    }
+    .splash-bar-track {
+      height: 5px; background: rgba(255,255,255,0.2);
+      border-radius: 10px; overflow: hidden;
+    }
+    .splash-bar-fill {
+      height: 100%; border-radius: 10px;
+      background: rgba(255,255,255,0.9);
+      animation: splashBarGrow 2.2s cubic-bezier(0.4,0,0.2,1) 0.3s forwards;
+      width: 0%;
+    }
+    @keyframes splashBarGrow {
+      0%   { width:0%; }
+      40%  { width:55%; }
+      70%  { width:80%; }
+      90%  { width:95%; }
+      100% { width:100%; }
+    }
+    .splash-status {
+      margin-top: 10px; font-size: 0.75rem; color: rgba(255,255,255,0.65);
+      text-align: center; font-weight: 500; height: 18px;
+      animation: splashTextIn 0.6s ease 0.7s both;
+    }
+
+    /* Tags techno en bas */
+    .splash-tags {
+      position: relative; z-index: 1; margin-top: 32px;
+      display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+      animation: splashTextIn 0.6s ease 0.9s both;
+    }
+    .splash-tag {
+      padding: 5px 14px; border-radius: 20px;
+      background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+      font-size: 0.72rem; font-weight: 700; color: #fff;
+      letter-spacing: 0.5px;
+    }
+
+    /* ══════════ DARK MODE OVERRIDES ══════════ */
+    body.dark thead th        { background: #13161f; color: var(--text3); border-bottom-color: var(--border); }
+    body.dark tbody tr:hover  { background: #1a1d27; }
+    body.dark tbody tr        { border-bottom-color: var(--border); }
+    body.dark .upload-zone    { background: #13161f; border-color: #2a3a2e; }
+    body.dark .upload-zone:hover, body.dark .upload-zone.over { background: #0d2e1a; border-color: var(--green); }
+    body.dark .login-input    { background: #13161f; color: var(--text); border-color: var(--border); }
+    body.dark .login-input:focus { border-color: var(--green); }
+    body.dark .note-textarea  { background: #13161f; color: var(--text); border-color: var(--border); }
+    body.dark .alert-modal    { background: #1a1d27; }
+    body.dark .alert-body     { background: #1a1d27; }
+    body.dark .alert-btn-dismiss { background: #13161f; border-color: var(--border); color: var(--text2); }
+    body.dark .note-modal     { background: #1a1d27; }
+    body.dark .note-modal-head{ border-bottom-color: var(--border); }
+    body.dark .note-disease-info { background: #13161f; }
+    body.dark .note-btn-cancel { background: #13161f; border-color: var(--border); color: var(--text2); }
+    body.dark .rc-body        { background: #1a1d27; }
+    body.dark .result-card    { border-color: var(--border); }
+    body.dark .prog           { background: #2a2d3a; }
+    body.dark .sensor-bar     { background: #2a2d3a; border-color: var(--border); }
+    body.dark .dl-bar-bg      { background: #2a2d3a; }
+    body.dark .cc-period      { background: #13161f; border-color: var(--border); }
+    body.dark .nav-tab:hover  { background: #0d2e1a; }
+    body.dark .alert-bar-close { background: rgba(255,255,255,0.15); }
+    body.dark .note-inline    { background: #2a2010; border-left-color: var(--orange); }
+    body.dark .btn-note       { background: #13161f; border-color: var(--border); color: var(--text3); }
+    body.dark .btn-note.has-note { background: #2a2010; border-color: #92400e; color: #fbbf24; }
+    body.dark .rc-advice      { background: #0d2e1a; border-left-color: var(--green); color: #6ee7a0; }
+    body.dark .login-hint     { background: #0d2e1a; border-color: #1a4a2a; color: #6ee7a0; }
+    body.dark .login-remember { color: var(--text2); }
+    body.dark .login-footer   { color: var(--text3); }
+    body.dark .login-logo-text h1 { color: var(--text); }
+    body.dark .login-sub, body.dark .login-title { color: var(--text); }
+
+    /* ══════════ LOGIN PAGE ══════════ */
+    .login-page {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--bg);
+    }
+    @media (max-width: 768px) { .login-page { grid-template-columns: 1fr; } .login-left { display: none !important; } }
+
+    /* Panneau gauche illustré */
+    .login-left {
+      background: linear-gradient(160deg, #0d6e2e 0%, #1db954 50%, #16a34a 100%);
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      padding: 48px; position: relative; overflow: hidden;
+    }
+    .login-left::before {
+      content: ''; position: absolute; inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    .login-left-circle1 {
+      position: absolute; width: 380px; height: 380px; border-radius: 50%;
+      background: rgba(255,255,255,0.06); top: -80px; right: -80px;
+    }
+    .login-left-circle2 {
+      position: absolute; width: 250px; height: 250px; border-radius: 50%;
+      background: rgba(255,255,255,0.05); bottom: -60px; left: -60px;
+    }
+    .login-left-content { position: relative; z-index: 1; text-align: center; }
+    .login-left-icon {
+      font-size: 4.5rem; margin-bottom: 20px;
+      filter: drop-shadow(0 8px 24px rgba(0,0,0,0.2));
+      animation: floatIcon 3s ease-in-out infinite;
+    }
+    @keyframes floatIcon { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+    .login-left h2 { font-size: 2rem; font-weight: 900; color: #fff; margin-bottom: 10px; line-height: 1.2; }
+    .login-left p  { font-size: 0.92rem; color: rgba(255,255,255,0.8); line-height: 1.6; max-width: 300px; }
+    .login-features { margin-top: 32px; display: flex; flex-direction: column; gap: 12px; }
+    .login-feature {
+      display: flex; align-items: center; gap: 12px;
+      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 12px; padding: 12px 16px; text-align: left;
+    }
+    .login-feature-icon { font-size: 1.3rem; flex-shrink: 0; }
+    .login-feature-text strong { display: block; font-size: 0.82rem; font-weight: 700; color: #fff; }
+    .login-feature-text span   { font-size: 0.72rem; color: rgba(255,255,255,0.7); }
+
+    /* Panneau droit — formulaire */
+    .login-right {
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      padding: 48px 40px;
+      animation: fadeInRight 0.5s ease;
+    }
+    @keyframes fadeInRight { from{opacity:0;transform:translateX(30px)} to{opacity:1;transform:translateX(0)} }
+    .login-form-wrap { width: 100%; max-width: 380px; }
+
+    .login-logo {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 36px;
+    }
+    .login-logo-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; box-shadow: 0 4px 14px rgba(29,185,84,0.35);
+    }
+    .login-logo-text h1 { font-size: 1.3rem; font-weight: 900; color: var(--text); }
+    .login-logo-text p  { font-size: 0.68rem; color: var(--text3); margin-top: 1px; text-transform: uppercase; letter-spacing: 1px; }
+
+    .login-title { font-size: 1.6rem; font-weight: 900; color: var(--text); margin-bottom: 6px; }
+    .login-sub   { font-size: 0.85rem; color: var(--text2); margin-bottom: 28px; }
+
+    .login-field { margin-bottom: 16px; }
+    .login-field label {
+      display: block; font-size: 0.78rem; font-weight: 700;
+      color: var(--text); margin-bottom: 6px;
+    }
+    .login-input-wrap { position: relative; }
+    .login-input-icon {
+      position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+      font-size: 1rem; pointer-events: none;
+    }
+    .login-input {
+      width: 100%; padding: 11px 14px 11px 38px;
+      border: 1.5px solid var(--border); border-radius: 10px;
+      font-size: 0.88rem; font-family: 'Inter', sans-serif;
+      color: var(--text); background: #fff; outline: none;
+      transition: border-color 0.18s, box-shadow 0.18s;
+    }
+    .login-input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(29,185,84,0.12); }
+    .login-input.error { border-color: var(--red); box-shadow: 0 0 0 3px rgba(239,68,68,0.1); }
+    .login-pw-toggle {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; font-size: 1rem; color: var(--text3);
+      padding: 2px;
+    }
+
+    .login-remember {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 20px;
+      font-size: 0.8rem; color: var(--text2); cursor: pointer;
+    }
+    .login-remember input { accent-color: var(--green); width: 15px; height: 15px; cursor: pointer; }
+
+    .btn-login {
+      width: 100%; padding: 13px; border: none; border-radius: 11px;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      color: #fff; font-size: 0.95rem; font-weight: 800; cursor: pointer;
+      transition: all 0.2s; box-shadow: 0 4px 16px rgba(29,185,84,0.35);
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      letter-spacing: 0.3px;
+    }
+    .btn-login:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(29,185,84,0.45); }
+    .btn-login:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .login-error {
+      background: #fee2e2; border: 1px solid #fca5a5; border-radius: 9px;
+      padding: 10px 14px; font-size: 0.8rem; color: #dc2626; font-weight: 600;
+      margin-bottom: 14px; display: flex; align-items: center; gap: 7px;
+      animation: shake2 0.4s ease;
+    }
+    @keyframes shake2 { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+
+    .login-hint {
+      margin-top: 20px; padding: 12px 16px;
+      background: var(--green-pale); border-radius: 10px; border: 1px solid #a7f3c3;
+      font-size: 0.75rem; color: var(--green-deep); line-height: 1.6;
+    }
+    .login-hint strong { font-weight: 700; }
+    .login-footer {
+      margin-top: 28px; text-align: center; font-size: 0.72rem; color: var(--text3);
+    }
+
+    /* Animation entrée dashboard */
+    .dashboard-enter { animation: dashEnter 0.4s ease; }
+    @keyframes dashEnter { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
   </style>
 </head>
 <body>
@@ -685,8 +1002,248 @@ function Donut({ data, labels, colors }) {
   return <canvas ref={r}/>;
 }
 
+/* ══════════════ SPLASH SCREEN ══════════════ */
+function SplashScreen({ onDone }) {
+  const [fading, setFading]   = useState(false);
+  const [status, setStatus]   = useState("Initialisation du système…");
+
+  const STEPS = [
+    { t: 400,  msg: "Connexion à l'ESP32-CAM…" },
+    { t: 900,  msg: "Chargement du modèle CNN/YOLO…" },
+    { t: 1500, msg: "Lecture des capteurs IoT…" },
+    { t: 2100, msg: "Prêt ✓" },
+  ];
+
+  useEffect(() => {
+    const timers = STEPS.map(s =>
+      setTimeout(() => setStatus(s.msg), s.t)
+    );
+    // Début du fade-out après 2.7s
+    const fadeTimer = setTimeout(() => setFading(true), 2700);
+    // Appel onDone après la fin de l'animation (2.7 + 0.7 = 3.4s)
+    const doneTimer = setTimeout(() => onDone(), 3400);
+    return () => { timers.forEach(clearTimeout); clearTimeout(fadeTimer); clearTimeout(doneTimer); };
+  }, []);
+
+  return (
+    <div className={`splash ${fading ? "fade-out" : ""}`}>
+      {/* Cercles décoratifs */}
+      <div className="splash-circle c1"/>
+      <div className="splash-circle c2"/>
+      <div className="splash-circle c3"/>
+
+      {/* Logo + titre */}
+      <div className="splash-logo">
+        <div className="splash-icon-wrap">🌿</div>
+        <div className="splash-title">PlantAI</div>
+        <div className="splash-subtitle">Détection intelligente des maladies des plantes</div>
+      </div>
+
+      {/* Barre de progression */}
+      <div className="splash-bar-wrap">
+        <div className="splash-bar-track">
+          <div className="splash-bar-fill"/>
+        </div>
+        <div className="splash-status">{status}</div>
+      </div>
+
+      {/* Tags technos */}
+      <div className="splash-tags">
+        <span className="splash-tag">📡 ESP32-CAM</span>
+        <span className="splash-tag">🤖 CNN / YOLO</span>
+        <span className="splash-tag">🐍 Flask</span>
+        <span className="splash-tag">🍃 MongoDB</span>
+        <span className="splash-tag">⚛️ React</span>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════ LOGIN PAGE ══════════════ */
+function LoginPage({ onLogin }) {
+  const [email,       setEmail]       = useState("");
+  const [password,    setPassword]    = useState("");
+  const [showPw,      setShowPw]      = useState(false);
+  const [remember,    setRemember]    = useState(false);
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState("");
+
+  const DEMO_EMAIL    = "etudiant@plantai.fr";
+  const DEMO_PASSWORD = "plantai2026";
+
+  const validate = () => {
+    if (!email.trim())    return "Veuillez saisir votre adresse e-mail.";
+    if (!/\S+@\S+\.\S+/.test(email)) return "Format d'e-mail invalide.";
+    if (!password)        return "Veuillez saisir votre mot de passe.";
+    if (password.length < 6) return "Le mot de passe doit contenir au moins 6 caractères.";
+    return "";
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const err = validate();
+    if (err) { setError(err); return; }
+    setError(""); setLoading(true);
+    // Simulation délai réseau sans async/await (compatible Babel standalone)
+    setTimeout(() => {
+      if (password.trim() === DEMO_PASSWORD) {
+        setLoading(false);
+        onLogin();
+      } else {
+        setLoading(false);
+        setError("Mot de passe incorrect. Entrez : plantai2026");
+      }
+    }, 1200);
+  };
+
+  const fillDemo = () => { setEmail(DEMO_EMAIL); setPassword(DEMO_PASSWORD); setError(""); };
+
+  return (
+    <div className="login-page">
+
+      {/* ── Panneau gauche ── */}
+      <div className="login-left">
+        <div className="login-left-circle1"/>
+        <div className="login-left-circle2"/>
+        <div className="login-left-content">
+          <div className="login-left-icon">🌿</div>
+          <h2>Détection Intelligente des Maladies des Plantes</h2>
+          <p>Plateforme IoT connectée à l'ESP32-CAM — analyses IA en temps réel avec modèle CNN/YOLO.</p>
+          <div className="login-features">
+            <div className="login-feature">
+              <span className="login-feature-icon">🤖</span>
+              <div className="login-feature-text">
+                <strong>Modèle CNN / YOLO</strong>
+                <span>Détection précise sur dataset PlantVillage</span>
+              </div>
+            </div>
+            <div className="login-feature">
+              <span className="login-feature-icon">📡</span>
+              <div className="login-feature-text">
+                <strong>ESP32-CAM en temps réel</strong>
+                <span>Capteurs température, humidité, sol, lumière</span>
+              </div>
+            </div>
+            <div className="login-feature">
+              <span className="login-feature-icon">📊</span>
+              <div className="login-feature-text">
+                <strong>Dashboard analytique</strong>
+                <span>Graphiques, alertes critiques, export PDF</span>
+              </div>
+            </div>
+            <div className="login-feature">
+              <span className="login-feature-icon">🗄️</span>
+              <div className="login-feature-text">
+                <strong>Backend Flask + MongoDB</strong>
+                <span>Historique persistant & API REST</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Panneau droit ── */}
+      <div className="login-right">
+        <div className="login-form-wrap">
+
+          {/* Logo */}
+          <div className="login-logo">
+            <div className="login-logo-icon">🌿</div>
+            <div className="login-logo-text">
+              <h1>PlantAI</h1>
+              <p>Student Plant Monitor</p>
+            </div>
+          </div>
+
+          <div className="login-title">Bon retour 👋</div>
+          <div className="login-sub">Connectez-vous pour accéder au tableau de bord.</div>
+
+          {/* Erreur */}
+          {error && (
+            <div className="login-error" key={error}>
+              <span>⚠️</span> {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} noValidate>
+
+            {/* Email */}
+            <div className="login-field">
+              <label htmlFor="lp-email">Adresse e-mail</label>
+              <div className="login-input-wrap">
+                <span className="login-input-icon">✉️</span>
+                <input
+                  id="lp-email"
+                  type="email"
+                  className={`login-input ${error && !email.trim() ? "error" : ""}`}
+                  placeholder="vous@exemple.fr"
+                  value={email}
+                  onChange={e=>{ setEmail(e.target.value); setError(""); }}
+                  autoComplete="email"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {/* Mot de passe */}
+            <div className="login-field">
+              <label htmlFor="lp-pw">Mot de passe</label>
+              <div className="login-input-wrap">
+                <span className="login-input-icon">🔒</span>
+                <input
+                  id="lp-pw"
+                  type={showPw ? "text" : "password"}
+                  className={`login-input ${error && email && !password ? "error" : ""}`}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={e=>{ setPassword(e.target.value); setError(""); }}
+                  autoComplete="current-password"
+                />
+                <button type="button" className="login-pw-toggle" onClick={()=>setShowPw(p=>!p)} tabIndex={-1}>
+                  {showPw ? "🙈" : "👁️"}
+                </button>
+              </div>
+            </div>
+
+            {/* Se souvenir */}
+            <label className="login-remember">
+              <input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/>
+              Se souvenir de moi
+            </label>
+
+            {/* Bouton */}
+            <button type="submit" className="btn-login" disabled={loading}>
+              {loading
+                ? <><span className="spinner"/>&nbsp;Connexion en cours…</>
+                : "🚀 Se connecter"
+              }
+            </button>
+
+          </form>
+
+          {/* Hint démonstration */}
+          <div className="login-hint" onClick={fillDemo} style={{cursor:"pointer"}} title="Cliquer pour remplir automatiquement">
+            <strong>🎓 Accès démonstration (cliquer pour remplir) :</strong><br/>
+            📧 Email : <strong>{DEMO_EMAIL}</strong><br/>
+            🔑 Mot de passe : <strong>{DEMO_PASSWORD}</strong>
+          </div>
+
+          <div className="login-footer">
+            Projet Tutoré 2026 · Groupe IoT PlantAI<br/>
+            <span style={{color:"var(--green-dark)",fontWeight:700}}>ESP32-CAM · CNN/YOLO · Flask · MongoDB</span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ══════════════ APP ══════════════ */
 function App() {
+  const [showSplash, setShowSplash] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [darkMode,  setDarkMode]   = useState(false);
   const [page,setPage]           = useState("dashboard");
   const [imageSrc,setImageSrc]   = useState(null);
   const [imageFile,setImageFile] = useState(null);
@@ -700,6 +1257,7 @@ function App() {
   const {s:sensors, hist:sHist} = useSensors();
 
   useEffect(()=>{ const id=setInterval(()=>setNow(new Date()),1000); return ()=>clearInterval(id); },[]);
+  useEffect(()=>{ document.body.classList.toggle("dark", darkMode); },[darkMode]);
 
   const total    = history.length;
   const healthy  = history.filter(h=>h.niveau==="healthy").length;
@@ -916,7 +1474,13 @@ function App() {
     }
   };
 
-  return (<>
+  /* Splash screen au démarrage */
+  if (showSplash) return <SplashScreen onDone={()=>setShowSplash(false)}/>;
+
+  /* Page de connexion */
+  if (!isLoggedIn) return <LoginPage onLogin={()=>setIsLoggedIn(true)}/>;
+
+  return (<div className="dashboard-enter">
 
     {/* ══ NAVBAR ══ */}
     <nav className="navbar">
@@ -947,6 +1511,26 @@ function App() {
         {pdfLoading ? "⏳ Génération..." : "📄 Exporter PDF"}
       </button>
       <div className="nav-time">{fmtTime(now)}</div>
+
+      {/* Bouton dark mode */}
+      <button className="btn-theme" onClick={()=>setDarkMode(p=>!p)} title={darkMode?"Passer en mode clair":"Passer en mode sombre"}>
+        {darkMode ? "☀️" : "🌙"}
+      </button>
+
+      <button
+        onClick={()=>setIsLoggedIn(false)}
+        title="Se déconnecter"
+        style={{
+          padding:"6px 12px", borderRadius:"8px", border:"1.5px solid var(--border)",
+          background:"#fff", color:"var(--text2)", fontSize:"0.75rem", fontWeight:700,
+          cursor:"pointer", display:"flex", alignItems:"center", gap:"5px", transition:"all 0.18s",
+          whiteSpace:"nowrap"
+        }}
+        onMouseEnter={e=>{e.currentTarget.style.background="#fee2e2";e.currentTarget.style.borderColor="#fca5a5";e.currentTarget.style.color="#dc2626";}}
+        onMouseLeave={e=>{e.currentTarget.style.background="#fff";e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.color="var(--text2)";}}
+      >
+        🚪 Déconnexion
+      </button>
     </nav>
 
     {/* Barre d'alerte sticky */}
@@ -1290,7 +1874,7 @@ function App() {
       )}
 
     </div>
-  </>);
+  </div>);
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
