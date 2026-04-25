@@ -1,0 +1,29 @@
+# Environnement
+.env
+
+# Uploads et résultats
+uploads/*
+!uploads/.gitkeep
+static/detections/*
+!static/detections/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+

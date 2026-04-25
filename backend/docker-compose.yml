@@ -1,0 +1,20 @@
+services:
+  detection-api:
+    build: .
+    container_name: detection-backend
+    ports:
+      - "5000:5000"
+    environment:
+      PORT: 5000
+      FLASK_DEBUG: "False"
+      MODEL_PATH: /app/model/modele_plantes.pt
+    volumes:
+      - ./model:/app/model:ro
+      - ./uploads:/app/uploads
+      - ./static/detections:/app/static/detections
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
