@@ -10,6 +10,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
@@ -307,6 +308,9 @@
       transition: transform 0.2s, box-shadow 0.2s;
     }
     .hero-banner:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+    /* Quand hero-banner est dans un TiltCard, le tilt gère tout */
+    .tilt-wrap .hero-banner { transition: none; }
+    .tilt-wrap .hero-banner:hover { transform: none; box-shadow: none; }
     .hero-banner.green  { background: linear-gradient(135deg, #1db954, #0d6e2e); box-shadow: var(--shadow-green); }
     .hero-banner.teal   { background: linear-gradient(135deg, #0ea5e9, #0369a1); box-shadow: 0 8px 32px rgba(14,165,233,0.22); }
     .hero-banner.orange { background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 8px 32px rgba(245,158,11,0.22); }
@@ -815,6 +819,31 @@
       letter-spacing: 0.5px;
     }
 
+    /* ══════════ TILT 3D CARDS ══════════ */
+    .tilt-wrap {
+      transform-style: preserve-3d;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+      will-change: transform;
+      position: relative;
+    }
+    .tilt-wrap:hover { z-index: 10; }
+    .tilt-glare {
+      position: absolute; inset: 0; border-radius: inherit;
+      pointer-events: none; overflow: hidden; z-index: 2;
+      border-radius: 18px;
+    }
+    .tilt-glare::after {
+      content: '';
+      position: absolute; inset: -50%;
+      background: radial-gradient(circle at var(--mx,50%) var(--my,50%),
+        rgba(255,255,255,0.18) 0%,
+        rgba(255,255,255,0.06) 35%,
+        transparent 65%);
+      transition: opacity 0.3s;
+      opacity: 0;
+    }
+    .tilt-wrap:hover .tilt-glare::after { opacity: 1; }
+
     /* ══════════ DARK MODE OVERRIDES ══════════ */
     body.dark thead th        { background: #13161f; color: var(--text3); border-bottom-color: var(--border); }
     body.dark tbody tr:hover  { background: #1a1d27; }
@@ -1018,7 +1047,11 @@
       position: absolute; width: 250px; height: 250px; border-radius: 50%;
       background: rgba(255,255,255,0.05); bottom: -60px; left: -60px;
     }
-    .login-left-content { position: relative; z-index: 1; text-align: center; }
+    .login-particles-canvas {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      z-index: 0; pointer-events: none;
+    }
+    .login-left-content { position: relative; z-index: 2; text-align: center; }
     .login-left-icon {
       font-size: 4.5rem; margin-bottom: 20px;
       filter: drop-shadow(0 8px 24px rgba(0,0,0,0.2));
@@ -1241,6 +1274,45 @@ function useSensors() {
   return {s, hist};
 }
 
+/* ── TiltCard — effet 3D au survol ── */
+function TiltCard({ children, className, style, maxTilt }) {
+  maxTilt = maxTilt || 15;
+  var ref = React.useRef();
+  function onMouseMove(e) {
+    var el = ref.current;
+    if (!el) return;
+    var rect = el.getBoundingClientRect();
+    var cx = rect.left + rect.width / 2;
+    var cy = rect.top + rect.height / 2;
+    var dx = (e.clientX - cx) / (rect.width / 2);
+    var dy = (e.clientY - cy) / (rect.height / 2);
+    var rotX = (-dy * maxTilt).toFixed(2);
+    var rotY = (dx * maxTilt).toFixed(2);
+    var mx = ((e.clientX - rect.left) / rect.width * 100).toFixed(1);
+    var my = ((e.clientY - rect.top) / rect.height * 100).toFixed(1);
+    el.style.transform = "perspective(800px) rotateX("+rotX+"deg) rotateY("+rotY+"deg) scale3d(1.04,1.04,1.04)";
+    el.style.boxShadow = "0 24px 60px rgba(0,0,0,0.25)";
+    var glare = el.querySelector('.tilt-glare');
+    if (glare) {
+      glare.style.setProperty('--mx', mx + '%');
+      glare.style.setProperty('--my', my + '%');
+    }
+  }
+  function onMouseLeave() {
+    var el = ref.current;
+    if (!el) return;
+    el.style.transform = '';
+    el.style.boxShadow = '';
+  }
+  return React.createElement(
+    'div',
+    { ref: ref, className: 'tilt-wrap ' + (className || ''), style: style,
+      onMouseMove: onMouseMove, onMouseLeave: onMouseLeave },
+    React.createElement('div', { className: 'tilt-glare' }),
+    children
+  );
+}
+
 /* ── Sparkline ── */
 function Sparkline({ data, color, fill }) {
   const r=useRef(); const c=useRef();
@@ -1310,43 +1382,155 @@ function Donut({ data, labels, colors }) {
 
 /* ══════════════ SPLASH SCREEN ══════════════ */
 function SplashScreen({ onDone }) {
-  const [fading, setFading]   = useState(false);
-  const [status, setStatus]   = useState("Initialisation du système…");
+  const [fading, setFading] = useState(false);
+  const [status, setStatus] = useState("Initialisation du système…");
+  const canvasRef = useRef();
+  const rendererRef = useRef();
 
   const STEPS = [
     { t: 400,  msg: "Connexion à l'ESP32-CAM…" },
-    { t: 900,  msg: "Chargement du modèle CNN/YOLO…" },
+    { t: 900,  msg: "Chargement du modèle YOLOv8…" },
     { t: 1500, msg: "Lecture des capteurs IoT…" },
     { t: 2100, msg: "Prêt ✓" },
   ];
 
+  /* ── Three.js 3D sphere ── */
   useEffect(() => {
-    const timers = STEPS.map(s =>
-      setTimeout(() => setStatus(s.msg), s.t)
-    );
-    // Début du fade-out après 2.7s
-    const fadeTimer = setTimeout(() => setFading(true), 2700);
-    // Appel onDone après la fin de l'animation (2.7 + 0.7 = 3.4s)
-    const doneTimer = setTimeout(() => onDone(), 3400);
+    const THREE = window.THREE;
+    if (!THREE || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const W = canvas.offsetWidth || window.innerWidth;
+    const H = canvas.offsetHeight || window.innerHeight;
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setSize(W, H);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x000000, 0);
+    rendererRef.current = renderer;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 100);
+    camera.position.z = 3.2;
+
+    /* Fibonacci sphere — distribution uniforme des particules */
+    const N = 280;
+    const positions = [];
+    const pts = [];
+    const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+    for (let i = 0; i < N; i++) {
+      const y = 1 - (i / (N - 1)) * 2;
+      const r = Math.sqrt(1 - y * y);
+      const theta = goldenAngle * i;
+      const x = Math.cos(theta) * r;
+      const z = Math.sin(theta) * r;
+      positions.push(x, y, z);
+      pts.push({ x, y, z });
+    }
+
+    /* Points verts lumineux */
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    const mat = new THREE.PointsMaterial({
+      color: 0x1db954, size: 0.045,
+      transparent: true, opacity: 0.95,
+      sizeAttenuation: true,
+    });
+    const sphere = new THREE.Points(geo, mat);
+    scene.add(sphere);
+
+    /* Lignes entre particules proches — réseau neuronal */
+    const linePos = [];
+    const threshold = 0.38;
+    for (let i = 0; i < pts.length; i++) {
+      for (let j = i + 1; j < pts.length; j++) {
+        const dx = pts[i].x - pts[j].x;
+        const dy = pts[i].y - pts[j].y;
+        const dz = pts[i].z - pts[j].z;
+        if (Math.sqrt(dx*dx + dy*dy + dz*dz) < threshold) {
+          linePos.push(pts[i].x, pts[i].y, pts[i].z, pts[j].x, pts[j].y, pts[j].z);
+        }
+      }
+    }
+    const lineGeo = new THREE.BufferGeometry();
+    lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(linePos, 3));
+    const lineMat = new THREE.LineBasicMaterial({ color: 0x4ade80, transparent: true, opacity: 0.18 });
+    const lines = new THREE.LineSegments(lineGeo, lineMat);
+    scene.add(lines);
+
+    /* Halo lumineux central */
+    const glowGeo = new THREE.SphereGeometry(0.92, 32, 32);
+    const glowMat = new THREE.MeshBasicMaterial({
+      color: 0x1db954, transparent: true, opacity: 0.04, side: THREE.BackSide,
+    });
+    scene.add(new THREE.Mesh(glowGeo, glowMat));
+
+    /* Deuxième sphère de points plus petits — profondeur */
+    const N2 = 120;
+    const pos2 = [];
+    for (let i = 0; i < N2; i++) {
+      const y = 1 - (i / (N2 - 1)) * 2;
+      const r = Math.sqrt(1 - y * y) * 1.45;
+      const theta = goldenAngle * i * 1.3;
+      pos2.push(Math.cos(theta)*r, y*1.45, Math.sin(theta)*r);
+    }
+    const geo2 = new THREE.BufferGeometry();
+    geo2.setAttribute('position', new THREE.Float32BufferAttribute(pos2, 3));
+    const mat2 = new THREE.PointsMaterial({ color: 0xa7f3d0, size: 0.022, transparent: true, opacity: 0.5 });
+    scene.add(new THREE.Points(geo2, mat2));
+
+    /* Animation loop */
+    let frame; let t = 0;
+    const animate = () => {
+      frame = requestAnimationFrame(animate);
+      t += 0.008;
+      sphere.rotation.y = t * 0.55;
+      sphere.rotation.x = Math.sin(t * 0.3) * 0.25;
+      lines.rotation.y  = t * 0.55;
+      lines.rotation.x  = Math.sin(t * 0.3) * 0.25;
+      /* Pulsation de taille */
+      mat.size = 0.045 + Math.sin(t * 1.8) * 0.008;
+      mat.opacity = 0.85 + Math.sin(t * 2.1) * 0.12;
+      renderer.render(scene, camera);
+    };
+    animate();
+
+    return () => {
+      cancelAnimationFrame(frame);
+      renderer.dispose();
+      geo.dispose(); mat.dispose();
+      lineGeo.dispose(); lineMat.dispose();
+    };
+  }, []);
+
+  /* ── Timers splash ── */
+  useEffect(() => {
+    const timers = STEPS.map(s => setTimeout(() => setStatus(s.msg), s.t));
+    const fadeTimer = setTimeout(() => setFading(true), 3200);
+    const doneTimer = setTimeout(() => onDone(), 3900);
     return () => { timers.forEach(clearTimeout); clearTimeout(fadeTimer); clearTimeout(doneTimer); };
   }, []);
 
   return (
     <div className={`splash ${fading ? "fade-out" : ""}`}>
-      {/* Cercles décoratifs */}
+      {/* Canvas Three.js en arrière-plan */}
+      <canvas ref={canvasRef} style={{
+        position:"absolute", inset:0, width:"100%", height:"100%", zIndex:0, pointerEvents:"none"
+      }}/>
+
+      {/* Cercles décoratifs flous */}
       <div className="splash-circle c1"/>
       <div className="splash-circle c2"/>
       <div className="splash-circle c3"/>
 
       {/* Logo + titre */}
-      <div className="splash-logo">
+      <div className="splash-logo" style={{position:"relative",zIndex:2}}>
         <div className="splash-icon-wrap">🌿</div>
         <div className="splash-title">PlantAI</div>
         <div className="splash-subtitle">Détection intelligente des maladies des plantes</div>
       </div>
 
       {/* Barre de progression */}
-      <div className="splash-bar-wrap">
+      <div className="splash-bar-wrap" style={{position:"relative",zIndex:2}}>
         <div className="splash-bar-track">
           <div className="splash-bar-fill"/>
         </div>
@@ -1354,12 +1538,13 @@ function SplashScreen({ onDone }) {
       </div>
 
       {/* Tags technos */}
-      <div className="splash-tags">
+      <div className="splash-tags" style={{position:"relative",zIndex:2}}>
         <span className="splash-tag">📡 ESP32-CAM</span>
-        <span className="splash-tag">🤖 CNN / YOLO</span>
+        <span className="splash-tag">🤖 YOLOv8</span>
         <span className="splash-tag">🐍 Flask</span>
         <span className="splash-tag">🍃 MongoDB</span>
         <span className="splash-tag">⚛️ React</span>
+        <span className="splash-tag">🔵 Three.js</span>
       </div>
     </div>
   );
@@ -1373,6 +1558,108 @@ function LoginPage({ onLogin /* onLogin(email) */ }) {
   const [remember,    setRemember]    = useState(false);
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState("");
+  const particlesCanvasRef = useRef();
+
+  useEffect(() => {
+    var THREE = window.THREE;
+    if (!THREE || !particlesCanvasRef.current) return;
+    var canvas = particlesCanvasRef.current;
+    var W = canvas.offsetWidth || 480;
+    var H = canvas.offsetHeight || 600;
+    canvas.width = W; canvas.height = H;
+
+    var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+    renderer.setSize(W, H);
+    renderer.setClearColor(0x000000, 0);
+
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(55, W / H, 0.1, 200);
+    camera.position.z = 28;
+
+    /* ── Particules flottantes ── */
+    var N = 160;
+    var positions = new Float32Array(N * 3);
+    var velocities = [];
+    var sizes = new Float32Array(N);
+    var opacities = new Float32Array(N);
+
+    for (var i = 0; i < N; i++) {
+      positions[i*3]   = (Math.random() - 0.5) * 40;
+      positions[i*3+1] = (Math.random() - 0.5) * 50;
+      positions[i*3+2] = (Math.random() - 0.5) * 20;
+      velocities.push({
+        x: (Math.random() - 0.5) * 0.012,
+        y: Math.random() * 0.018 + 0.005,
+        z: (Math.random() - 0.5) * 0.006,
+        phase: Math.random() * Math.PI * 2,
+        speed: Math.random() * 0.4 + 0.3
+      });
+      sizes[i]    = Math.random() * 0.10 + 0.035;
+      opacities[i] = Math.random() * 0.5 + 0.25;
+    }
+
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+    var mat = new THREE.PointsMaterial({
+      color: 0xffffff, size: 0.12,
+      transparent: true, opacity: 0.55,
+      sizeAttenuation: true, depthWrite: false
+    });
+
+    var points = new THREE.Points(geo, mat);
+    scene.add(points);
+
+    /* ── Quelques lignes reliant les particules proches ── */
+    var lineGeo = new THREE.BufferGeometry();
+    var linePts = [];
+    for (var a = 0; a < N; a++) {
+      for (var b = a+1; b < N; b++) {
+        var dx = positions[a*3] - positions[b*3];
+        var dy = positions[a*3+1] - positions[b*3+1];
+        var dz = positions[a*3+2] - positions[b*3+2];
+        var dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+        if (dist < 8) {
+          linePts.push(positions[a*3], positions[a*3+1], positions[a*3+2]);
+          linePts.push(positions[b*3], positions[b*3+1], positions[b*3+2]);
+        }
+      }
+    }
+    if (linePts.length > 0) {
+      lineGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(linePts), 3));
+      var lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.1 });
+      scene.add(new THREE.LineSegments(lineGeo, lineMat));
+    }
+
+    var animId;
+    var t = 0;
+    var posArr = geo.attributes.position.array;
+
+    function animate() {
+      animId = requestAnimationFrame(animate);
+      t += 0.016;
+      for (var k = 0; k < N; k++) {
+        var v = velocities[k];
+        posArr[k*3]   += v.x + Math.sin(t * v.speed + v.phase) * 0.003;
+        posArr[k*3+1] += v.y;
+        posArr[k*3+2] += v.z + Math.cos(t * v.speed * 0.7 + v.phase) * 0.003;
+        /* reboucle en haut → réapparaît en bas */
+        if (posArr[k*3+1] > 26) posArr[k*3+1] = -26;
+        if (posArr[k*3]   >  22) posArr[k*3]   = -22;
+        if (posArr[k*3]   < -22) posArr[k*3]   =  22;
+      }
+      geo.attributes.position.needsUpdate = true;
+      /* légère pulsation de l'opacité globale */
+      mat.opacity = 0.5 + Math.sin(t * 0.8) * 0.1;
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    return function () {
+      cancelAnimationFrame(animId);
+      renderer.dispose();
+    };
+  }, []);
 
   const DEMO_EMAIL    = "etudiant@plantai.fr";
   const DEMO_PASSWORD = "plantai2026";
@@ -1409,6 +1696,7 @@ function LoginPage({ onLogin /* onLogin(email) */ }) {
 
       {/* ── Panneau gauche ── */}
       <div className="login-left">
+        <canvas ref={particlesCanvasRef} className="login-particles-canvas"/>
         <div className="login-left-circle1"/>
         <div className="login-left-circle2"/>
         <div className="login-left-content">
@@ -2048,7 +2336,7 @@ function App() {
         <div className="hero-grid" style={{marginBottom:"20px"}}>
 
           {/* Plant Health */}
-          <div className={`hero-banner ${healthColor}`}>
+          <TiltCard className={`hero-banner ${healthColor}`}>
             <div className="hb-bg-circle c1"/><div className="hb-bg-circle c2"/>
             <div className="hb-label"><span className="pulse-dot" style={{background:"rgba(255,255,255,0.8)"}}/> PLANT HEALTH</div>
             <div className="hb-value">{loading?"Processing…":healthLabel}</div>
@@ -2062,38 +2350,38 @@ function App() {
                 <div className="hb-conf-label">Confidence</div>
               </div>
             )}
-          </div>
+          </TiltCard>
 
           {/* Soil + Temp side */}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"16px"}}>
-            <div className="hero-banner teal">
+            <TiltCard className="hero-banner teal">
               <div className="hb-bg-circle c1"/><div className="hb-bg-circle c2"/>
               <div className="hb-label">💧 SOIL MOIST</div>
               <div className="hb-value">{sensors.soil}%</div>
               <div className="hb-sub">{sensors.soil<40?"Sol trop sec":sensors.soil>75?"Sol saturé":"Humidité optimale"}</div>
               <div className="hb-pill">🌱 Capteur sol</div>
-            </div>
-            <div className="hero-banner orange">
+            </TiltCard>
+            <TiltCard className="hero-banner orange">
               <div className="hb-bg-circle c1"/><div className="hb-bg-circle c2"/>
               <div className="hb-label">🌡️ TEMPÉRATURE</div>
               <div className="hb-value">{sensors.temp}°C</div>
               <div className="hb-sub">{sensors.temp<18?"Trop froid":sensors.temp>32?"Trop chaud":"Température idéale"}</div>
               <div className="hb-pill">📡 ESP32</div>
-            </div>
-            <div className="hero-banner" style={{background:"linear-gradient(135deg,#8b5cf6,#6d28d9)",boxShadow:"0 8px 32px rgba(139,92,246,0.22)"}}>
+            </TiltCard>
+            <TiltCard className="hero-banner" style={{background:"linear-gradient(135deg,#8b5cf6,#6d28d9)",boxShadow:"0 8px 32px rgba(139,92,246,0.22)"}}>
               <div className="hb-bg-circle c1"/><div className="hb-bg-circle c2"/>
               <div className="hb-label">💧 HUMIDITÉ AIR</div>
               <div className="hb-value">{sensors.humidity}%</div>
               <div className="hb-sub">{sensors.humidity<40?"Air sec":sensors.humidity>80?"Trop humide":"Humidité correcte"}</div>
               <div className="hb-pill">🌫️ Capteur DHT22</div>
-            </div>
-            <div className="hero-banner" style={{background:"linear-gradient(135deg,#eab308,#a16207)",boxShadow:"0 8px 32px rgba(234,179,8,0.22)"}}>
+            </TiltCard>
+            <TiltCard className="hero-banner" style={{background:"linear-gradient(135deg,#eab308,#a16207)",boxShadow:"0 8px 32px rgba(234,179,8,0.22)"}}>
               <div className="hb-bg-circle c1"/><div className="hb-bg-circle c2"/>
               <div className="hb-label">☀️ LUMINOSITÉ</div>
               <div className="hb-value">{sensors.light}%</div>
               <div className="hb-sub">{sensors.light<30?"Trop sombre":sensors.light>85?"Trop lumineux":"Luminosité idéale"}</div>
               <div className="hb-pill">🔆 Capteur LDR</div>
-            </div>
+            </TiltCard>
           </div>
         </div>
 
