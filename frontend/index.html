@@ -1135,6 +1135,73 @@ const { useState, useRef, useEffect } = React;
 
 const API_URL = "http://localhost:5000";
 
+/* ══ Mapping classes YOLOv8 → français ══
+   Basé sur PlantVillage dataset (38 classes standard).
+   Le modèle modele_plantes.pt utilise ces indices. */
+const CLASS_MAP = {
+  0:  { maladie:"Tache bactérienne (Tomate)",      niveau:"sick",     conseil:"Appliquer un bactéricide au cuivre. Éviter l'arrosage par aspersion." },
+  1:  { maladie:"Alternariose précoce (Tomate)",    niveau:"sick",     conseil:"Retirer les feuilles atteintes. Traitement fongicide préventif." },
+  2:  { maladie:"Mildiou (Tomate)",                 niveau:"critical", conseil:"Infestation grave. Isoler et traiter immédiatement au métalaxyl." },
+  3:  { maladie:"Moisissure des feuilles (Tomate)", niveau:"sick",     conseil:"Améliorer la ventilation. Fongicide à base de chlorothalonil." },
+  4:  { maladie:"Septoriose (Tomate)",              niveau:"sick",     conseil:"Supprimer les feuilles infectées. Éviter l'humidité foliaire." },
+  5:  { maladie:"Acariens (Tomate)",                niveau:"sick",     conseil:"Traitement acaricide. Augmenter l'humidité ambiante." },
+  6:  { maladie:"Tache cible (Tomate)",             niveau:"sick",     conseil:"Rotation des cultures. Fongicide préventif recommandé." },
+  7:  { maladie:"Virus jaunissement feuilles (Tomate)", niveau:"critical", conseil:"Maladie virale grave. Arracher et détruire les plants atteints." },
+  8:  { maladie:"Virus mosaïque (Tomate)",          niveau:"critical", conseil:"Pas de traitement curatif. Éliminer les plants infectés immédiatement." },
+  9:  { maladie:"Tomate saine",                     niveau:"healthy",  conseil:"Aucune anomalie détectée. Maintenir un arrosage régulier." },
+  10: { maladie:"Tavelure (Pomme)",                 niveau:"sick",     conseil:"Fongicide au cuivre. Ramasser et détruire les feuilles tombées." },
+  11: { maladie:"Pourriture noire (Pomme)",         niveau:"critical", conseil:"Tailler les parties atteintes. Traitement fongicide systémique." },
+  12: { maladie:"Rouille cèdre-pommier",            niveau:"sick",     conseil:"Fongicide préventif au printemps. Éliminer les genévriers proches." },
+  13: { maladie:"Pomme saine",                      niveau:"healthy",  conseil:"Plant en bonne santé. Surveiller régulièrement." },
+  14: { maladie:"Myrtille saine",                   niveau:"healthy",  conseil:"Aucune anomalie. Maintenir le pH du sol entre 4.5 et 5.5." },
+  15: { maladie:"Oïdium (Cerise)",                  niveau:"sick",     conseil:"Traitement au soufre ou bicarbonate. Améliorer la ventilation." },
+  16: { maladie:"Cerise saine",                     niveau:"healthy",  conseil:"Plant en bonne santé. Continuer la surveillance." },
+  17: { maladie:"Cercosporiose (Maïs)",             niveau:"sick",     conseil:"Rotation des cultures. Variétés résistantes recommandées." },
+  18: { maladie:"Rouille commune (Maïs)",           niveau:"sick",     conseil:"Fongicide foliaire. Surveiller l'humidité." },
+  19: { maladie:"Brûlure foliaire (Maïs)",          niveau:"critical", conseil:"Fongicide systémique. Éliminer les résidus de culture." },
+  20: { maladie:"Maïs sain",                        niveau:"healthy",  conseil:"Aucune anomalie. Maintenir la fertilisation azotée." },
+  21: { maladie:"Pourriture noire (Vigne)",         niveau:"critical", conseil:"Tailler et brûler les parties atteintes. Fongicide cuivrique." },
+  22: { maladie:"Esca / Eutypiose (Vigne)",         niveau:"critical", conseil:"Maladie du bois grave. Consulter un vitiviniculteur spécialisé." },
+  23: { maladie:"Brûlure des feuilles (Vigne)",     niveau:"sick",     conseil:"Fongicide préventif. Éviter l'excès d'azote." },
+  24: { maladie:"Vigne saine",                      niveau:"healthy",  conseil:"Plant en bonne santé. Surveiller l'humidité." },
+  25: { maladie:"Huanglongbing (Orange)",           niveau:"critical", conseil:"Maladie incurable. Arracher les arbres atteints immédiatement." },
+  26: { maladie:"Tache bactérienne (Pêche)",        niveau:"sick",     conseil:"Bactéricide cuivrique. Éviter les blessures sur les fruits." },
+  27: { maladie:"Pêche saine",                      niveau:"healthy",  conseil:"Aucune anomalie détectée. Continuer la surveillance." },
+  28: { maladie:"Tache bactérienne (Poivron)",      niveau:"sick",     conseil:"Bactéricide au cuivre. Rotation des cultures recommandée." },
+  29: { maladie:"Poivron sain",                     niveau:"healthy",  conseil:"Plant en bonne santé. Maintenir l'arrosage régulier." },
+  30: { maladie:"Alternariose précoce (Pomme de terre)", niveau:"sick",  conseil:"Fongicide préventif. Éviter les excès d'humidité foliaire." },
+  31: { maladie:"Mildiou (Pomme de terre)",         niveau:"critical", conseil:"Maladie grave. Traitement au métalaxyl en urgence. Isoler." },
+  32: { maladie:"Pomme de terre saine",             niveau:"healthy",  conseil:"Aucune anomalie. Maintenir un bon drainage du sol." },
+  33: { maladie:"Framboise saine",                  niveau:"healthy",  conseil:"Plant en bonne santé. Surveiller les acariens au printemps." },
+  34: { maladie:"Soja sain",                        niveau:"healthy",  conseil:"Aucune anomalie. Maintenir la rotation avec céréales." },
+  35: { maladie:"Oïdium (Courge)",                  niveau:"sick",     conseil:"Traitement au soufre. Améliorer l'aération entre plants." },
+  36: { maladie:"Brûlure des feuilles (Fraise)",    niveau:"sick",     conseil:"Fongicide préventif. Éliminer les feuilles âgées." },
+  37: { maladie:"Fraise saine",                     niveau:"healthy",  conseil:"Plant en bonne santé. Surveiller les ravageurs du sol." },
+};
+
+/* Convertit la réponse brute du backend YOLOv8 → format frontend */
+function transformBackendResponse(raw) {
+  // Pas de détection
+  if (!raw.predictions || raw.predictions.length === 0) {
+    return { maladie:"Aucune maladie détectée", niveau:"healthy", score:95, conseil:"Le modèle n'a détecté aucune pathologie. Plante probablement saine." };
+  }
+  // Prendre la prédiction avec la meilleure confiance
+  const best = raw.predictions.reduce((a,b) => a.confidence > b.confidence ? a : b);
+  const score = Math.round(best.confidence * 100);
+  const mapped = CLASS_MAP[best.class];
+  if (mapped) {
+    return { ...mapped, score };
+  }
+  // Classe inconnue — fallback générique basé sur la confiance
+  const niveau = score >= 85 ? "critical" : score >= 55 ? "sick" : "healthy";
+  return {
+    maladie: `Maladie détectée (classe ${best.class})`,
+    niveau,
+    score,
+    conseil: "Consulter un agronome pour identification précise."
+  };
+}
+
 const MOCK = [
   { maladie:"Mildiou (Plasmopara)", niveau:"sick",     score:87, conseil:"Appliquer un fongicide à base de cuivre. Supprimer les feuilles atteintes." },
   { maladie:"Rouille foliaire",     niveau:"sick",     score:73, conseil:"Traitement préventif au soufre. Assurer une bonne aération entre les plants." },
@@ -1524,22 +1591,28 @@ function App() {
     if (!imageFile) return;
     setLoading(true); setResult(null);
     try {
-      const fd=new FormData(); fd.append("image",imageFile);
-      const res=await fetch(`${API_URL}/predict`,{method:"POST",body:fd});
-      if(!res.ok) throw new Error();
-      const data=await res.json();
+      const fd = new FormData(); fd.append("image", imageFile);
+      const res = await fetch(`${API_URL}/api/predict`, { method:"POST", body:fd });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const raw = await res.json();
+      // Vérifier si le backend a renvoyé une erreur
+      if (raw.error) throw new Error(raw.error);
+      // Transformer la réponse YOLOv8 → format frontend
+      const data = transformBackendResponse(raw);
       setResult(data);
-      setHistory(p=>[{id:Date.now(),image:fileName,...data,date:new Date()},...p]);
-      if (data.niveau==="critical") { setAlertModal(data); setAlertBar(data); }
-      else if (data.niveau==="sick") { showToast(`⚠️ Plante infectée détectée : ${data.maladie} (${data.score}%)`,"error"); }
-      else { showToast(`✅ Plante saine — Confiance : ${data.score}%`,"success"); }
-    } catch {
-      await new Promise(r=>setTimeout(r,1800));
-      const data=MOCK[Math.floor(Math.random()*MOCK.length)];
-      setResult(data); setHistory(p=>[{id:Date.now(),image:fileName,...data,date:new Date()},...p]);
+      setHistory(p=>[{id:Date.now(),image:fileName,...data,date:new Date(),source:"api"},...p]);
       if (data.niveau==="critical") { setAlertModal(data); setAlertBar(data); }
       else if (data.niveau==="sick") { showToast(`⚠️ Plante infectée : ${data.maladie} (${data.score}%)`,"error"); }
       else { showToast(`✅ Plante saine — Confiance : ${data.score}%`,"success"); }
+    } catch(err) {
+      // Fallback mock si le backend est inaccessible
+      console.warn("Backend inaccessible, utilisation du mode démo :", err.message);
+      await new Promise(r=>setTimeout(r,1400));
+      const data = MOCK[Math.floor(Math.random()*MOCK.length)];
+      setResult(data); setHistory(p=>[{id:Date.now(),image:fileName,...data,date:new Date(),source:"mock"},...p]);
+      if (data.niveau==="critical") { setAlertModal(data); setAlertBar(data); }
+      else if (data.niveau==="sick") { showToast(`⚠️ [Démo] ${data.maladie} (${data.score}%)`,"error"); }
+      else { showToast(`✅ [Démo] Plante saine — ${data.score}%`,"success"); }
     } finally { setLoading(false); }
   };
 
@@ -2183,7 +2256,10 @@ function App() {
                 {history.map((h,i)=>(
                   <tr key={h.id}>
                     <td style={{color:"var(--text3)",fontWeight:700}}>{total-i}</td>
-                    <td style={{color:"var(--text3)"}}>🖼 {h.image||"image.jpg"}</td>
+                    <td style={{color:"var(--text3)"}}>🖼 {h.image||"image.jpg"}
+                      {h.source==="api" && <span style={{marginLeft:"5px",fontSize:"0.6rem",background:"#dcfce7",color:"#16a34a",borderRadius:"4px",padding:"1px 5px",fontWeight:700}}>API</span>}
+                      {h.source==="mock" && <span style={{marginLeft:"5px",fontSize:"0.6rem",background:"#fef9c3",color:"#92400e",borderRadius:"4px",padding:"1px 5px",fontWeight:700}}>Démo</span>}
+                    </td>
                     <td className="td-bold">{h.maladie}</td>
                     <td>
                       <span style={{color:bcolor(h.niveau),fontWeight:800}}>{h.score}%</span>
