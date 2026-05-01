@@ -6,6 +6,13 @@ gunicorn==21.2.0
 Pillow==10.0.1
 numpy==1.24.3
 opencv-python==4.8.1.78
+requests==2.31.0
+
+# Modèle primaire : HuggingFace ViT (dima806/plant_disease_image_detection)
 torch==2.0.1
 torchvision==0.15.2
+transformers>=4.35.0
+accelerate>=0.24.0
+
+# Modèle fallback : YOLOv8
 ultralytics==8.2.80

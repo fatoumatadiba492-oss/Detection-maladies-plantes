@@ -484,6 +484,7 @@
     .rc-header.healthy  { background: linear-gradient(135deg,#1db954,#0d6e2e); }
     .rc-header.sick     { background: linear-gradient(135deg,#f59e0b,#d97706); }
     .rc-header.critical { background: linear-gradient(135deg,#ef4444,#b91c1c); }
+    .rc-header.unknown  { background: linear-gradient(135deg,#64748b,#334155); }
     .rc-header-name { font-size: 1rem; font-weight: 800; color: #fff; }
     .rc-body { padding: 14px 16px; background: #fff; }
     .rc-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.8rem; }
@@ -495,6 +496,7 @@
     .pill-healthy  { background: var(--green-pale); color: var(--green-dark); }
     .pill-sick     { background: #fef3c7; color: #92400e; }
     .pill-critical { background: #fee2e2; color: #991b1b; }
+    .pill-unknown  { background: #f1f5f9; color: #475569; }
     .rc-advice { margin-top: 10px; background: var(--green-pale); border-left: 3px solid var(--green); border-radius: 0 8px 8px 0; padding: 9px 12px; font-size: 0.76rem; color: var(--green-deep); line-height: 1.5; }
 
     /* ══════════ ANNOTATIONS ══════════ */
@@ -1378,6 +1380,215 @@
     .ambient-glow.g1 { width: 600px; height: 600px; top: -200px; right: -150px; }
     .ambient-glow.g2 { width: 400px; height: 400px; bottom: -100px; left: -100px; }
 
+    /* ══════════ ESP32-CAM BADGE ══════════ */
+    .esp32-badge {
+      display: flex; align-items: center; gap: 7px;
+      border-radius: 20px; padding: 5px 13px;
+      font-size: 0.72rem; font-weight: 700;
+      cursor: pointer; transition: all 0.2s; border: 1.5px solid;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .esp32-badge.connected {
+      background: var(--green-pale); border-color: #a7f3c3; color: var(--green-dark);
+    }
+    .esp32-badge.disconnected {
+      background: #fef2f2; border-color: #fecaca; color: #dc2626;
+    }
+    .esp32-badge.unconfigured {
+      background: var(--white); border-color: var(--border); color: var(--text3);
+    }
+    .esp32-badge:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+    .esp32-dot {
+      width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+    }
+    .esp32-dot.on  { background: #1db954; animation: pulse 2s infinite; }
+    .esp32-dot.off { background: #ef4444; }
+    .esp32-dot.grey { background: #94a3b8; }
+
+    /* ══════════ ESP32 SETTINGS MODAL ══════════ */
+    .esp32-modal-overlay {
+      position: fixed; inset: 0; z-index: 10000;
+      background: rgba(0,0,0,0.5); backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+      animation: fadeIn 0.2s;
+    }
+    .esp32-modal {
+      background: var(--white); border-radius: 20px;
+      width: 460px; max-width: 94vw; overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.22);
+      animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .esp32-modal-head {
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      padding: 22px 24px 18px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .esp32-modal-icon {
+      width: 48px; height: 48px; border-radius: 14px;
+      background: rgba(29,185,84,0.2); border: 1.5px solid rgba(29,185,84,0.4);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; flex-shrink: 0;
+    }
+    .esp32-modal-title { font-size: 1.05rem; font-weight: 800; color: #fff; margin-bottom: 3px; }
+    .esp32-modal-sub   { font-size: 0.76rem; color: rgba(255,255,255,0.55); }
+    .esp32-modal-close {
+      margin-left: auto; background: rgba(255,255,255,0.1); border: none;
+      color: rgba(255,255,255,0.7); width: 30px; height: 30px; border-radius: 8px;
+      cursor: pointer; font-size: 1rem; transition: all 0.2s; flex-shrink: 0;
+    }
+    .esp32-modal-close:hover { background: rgba(255,255,255,0.2); color: #fff; }
+    .esp32-modal-body  { padding: 22px 24px; }
+    .esp32-label  { font-size: 0.78rem; font-weight: 700; color: var(--text); margin-bottom: 7px; }
+    .esp32-input-wrap { display: flex; gap: 8px; }
+    .esp32-ip-input {
+      flex: 1; padding: 10px 14px; border-radius: 10px;
+      border: 1.5px solid var(--border2); background: var(--bg);
+      font-size: 0.9rem; font-family: monospace; color: var(--text);
+      outline: none; transition: border-color 0.2s;
+    }
+    .esp32-ip-input:focus { border-color: var(--green); }
+    .esp32-btn-test {
+      padding: 10px 16px; border-radius: 10px; border: none;
+      background: linear-gradient(135deg, #1db954, #16a34a);
+      color: #fff; font-size: 0.82rem; font-weight: 700;
+      cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    }
+    .esp32-btn-test:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(29,185,84,0.3); }
+    .esp32-btn-test:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .esp32-status-line {
+      margin-top: 10px; padding: 10px 14px; border-radius: 10px;
+      font-size: 0.78rem; font-weight: 600;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .esp32-status-line.ok  { background: #dcfce7; color: #16a34a; border: 1px solid #86efac; }
+    .esp32-status-line.err { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+    .esp32-hints {
+      margin-top: 14px; padding: 12px 14px; border-radius: 10px;
+      background: var(--bg); border: 1px solid var(--border);
+      font-size: 0.73rem; color: var(--text2); line-height: 1.7;
+    }
+    .esp32-hints code {
+      background: rgba(29,185,84,0.12); color: var(--green-dark);
+      padding: 1px 6px; border-radius: 4px; font-family: monospace;
+    }
+    .esp32-modal-footer {
+      padding: 0 24px 22px;
+      display: flex; gap: 10px; justify-content: flex-end;
+    }
+    .esp32-btn-cancel {
+      padding: 9px 18px; border-radius: 10px; border: 1.5px solid var(--border2);
+      background: var(--white); color: var(--text2); font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; transition: all 0.18s;
+    }
+    .esp32-btn-cancel:hover { background: var(--bg); }
+    .esp32-btn-save {
+      padding: 9px 20px; border-radius: 10px; border: none;
+      background: linear-gradient(135deg, #1db954, #16a34a);
+      color: #fff; font-size: 0.82rem; font-weight: 700;
+      cursor: pointer; transition: all 0.18s;
+      box-shadow: 0 2px 8px rgba(29,185,84,0.3);
+    }
+    .esp32-btn-save:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(29,185,84,0.4); }
+    .esp32-btn-save:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ══════════ ESP32 CAMERA PANEL ══════════ */
+    .cam-mode-toggle {
+      display: flex; background: var(--bg); border-radius: 12px;
+      padding: 4px; gap: 4px; margin-bottom: 14px;
+      border: 1.5px solid var(--border);
+    }
+    .cam-mode-btn {
+      flex: 1; padding: 8px 12px; border-radius: 8px; border: none;
+      font-size: 0.8rem; font-weight: 700; cursor: pointer;
+      transition: all 0.2s; color: var(--text2); background: transparent;
+    }
+    .cam-mode-btn.active {
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .cam-mode-btn:not(.active):hover { background: var(--white); }
+
+    .esp32-stream-wrap {
+      border-radius: 14px; overflow: hidden; position: relative;
+      background: #0f1117; min-height: 200px;
+      border: 2px solid var(--border); margin-bottom: 10px;
+    }
+    .esp32-stream-wrap img {
+      width: 100%; height: auto; display: block; max-height: 300px; object-fit: contain;
+    }
+    .esp32-overlay-badge {
+      position: absolute; top: 10px; left: 10px;
+      background: rgba(0,0,0,0.65); backdrop-filter: blur(6px);
+      color: #fff; font-size: 0.65rem; font-weight: 700;
+      padding: 4px 10px; border-radius: 20px;
+      display: flex; align-items: center; gap: 5px; border: 1px solid rgba(255,255,255,0.12);
+    }
+    .rec-dot {
+      width: 6px; height: 6px; background: #ef4444; border-radius: 50%;
+      animation: pulse 1.2s infinite;
+    }
+    .esp32-offline-box {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 200px; gap: 12px;
+      padding: 24px;
+    }
+    .esp32-offline-icon {
+      font-size: 3rem; opacity: 0.3; filter: grayscale(1);
+    }
+    .esp32-offline-title { font-size: 0.95rem; font-weight: 800; color: var(--text2); }
+    .esp32-offline-sub   { font-size: 0.76rem; color: var(--text3); text-align: center; line-height: 1.6; }
+    .btn-esp32-configure {
+      padding: 8px 18px; border-radius: 10px; border: 1.5px solid var(--green);
+      background: var(--green-pale); color: var(--green-dark);
+      font-size: 0.8rem; font-weight: 700; cursor: pointer;
+      transition: all 0.18s;
+    }
+    .btn-esp32-configure:hover { background: var(--green); color: #fff; transform: translateY(-1px); }
+
+    .btn-capture {
+      width: 100%; padding: 13px; border-radius: 12px; border: none;
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: #fff; font-size: 0.92rem; font-weight: 800;
+      cursor: pointer; transition: all 0.22s;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+      display: flex; align-items: center; justify-content: center; gap: 9px;
+      margin-top: 10px;
+    }
+    .btn-capture:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.25); }
+    .btn-capture:active { transform: translateY(0); }
+    .btn-capture:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ══════════ RESULT ENRICHI ══════════ */
+    .rc-plant-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--green-pale); border: 1px solid #a7f3c3;
+      border-radius: 20px; padding: 3px 12px;
+      font-size: 0.72rem; font-weight: 700; color: var(--green-dark);
+      margin-bottom: 10px;
+    }
+    .rc-detail-row {
+      background: var(--bg); border-radius: 10px;
+      padding: 10px 12px; margin-top: 8px;
+      font-size: 0.76rem; color: var(--text2); line-height: 1.6;
+    }
+    .rc-detail-row strong { color: var(--text); }
+    .rc-treatment {
+      margin-top: 8px; background: #fef9c3;
+      border-left: 3px solid #f59e0b;
+      border-radius: 0 8px 8px 0; padding: 9px 12px;
+      font-size: 0.76rem; color: #78350f; line-height: 1.5;
+    }
+    body.dark .rc-treatment { background: #292000; color: #fcd34d; border-color: #d97706; }
+    .rc-top5 { margin-top: 10px; }
+    .rc-top5-title { font-size: 0.68rem; font-weight: 700; color: var(--text3);
+      text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .rc-top5-item {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.73rem; color: var(--text2); margin-bottom: 4px;
+    }
+    .rc-top5-bar-bg { flex:1; height: 5px; background: var(--border); border-radius: 10px; overflow: hidden; }
+    .rc-top5-bar-fill { height: 100%; border-radius: 10px; transition: width 0.8s; }
+    .rc-top5-pct { font-weight: 700; color: var(--text); min-width: 36px; text-align: right; font-size: 0.7rem; }
   </style>
 </head>
 <body>
@@ -1432,26 +1643,47 @@ const CLASS_MAP = {
   37: { maladie:"Fraise saine",                     niveau:"healthy",  conseil:"Plant en bonne santé. Surveiller les ravageurs du sol." },
 };
 
-/* Convertit la réponse brute du backend YOLOv8 → format frontend */
+/* Convertit la réponse du backend (nouveau format HuggingFace/EfficientNet
+   OU ancien format YOLO) → format frontend unifié */
 function transformBackendResponse(raw) {
-  // Pas de détection
-  if (!raw.predictions || raw.predictions.length === 0) {
-    return { maladie:"Aucune maladie détectée", niveau:"healthy", score:95, conseil:"Le modèle n'a détecté aucune pathologie. Plante probablement saine." };
+  // ── NOUVEAU FORMAT (HuggingFace / EfficientNet) ──────────────────────────
+  // { label, confidence, all_predictions, disease_info }
+  if (raw.disease_info) {
+    const info  = raw.disease_info;
+    const conf  = raw.confidence || 0;
+    const score = Math.round(conf * 100);
+    return {
+      maladie:        info.fr || info.maladie || raw.label || "Inconnue",
+      niveau:         info.niveau || "unknown",
+      score,
+      conseil:        info.conseil || "",
+      plante:         info.plante  || null,
+      description:    info.description || null,
+      traitement:     info.traitement  || null,
+      label:          raw.label,
+      allPredictions: raw.all_predictions || [],
+    };
   }
-  // Prendre la prédiction avec la meilleure confiance
-  const best = raw.predictions.reduce((a,b) => a.confidence > b.confidence ? a : b);
+
+  // ── ANCIEN FORMAT YOLO ───────────────────────────────────────────────────
+  // { predictions: [{class, confidence, box}] }
+  if (!raw.predictions || raw.predictions.length === 0) {
+    return {
+      maladie: "Espèce non reconnue par le modèle",
+      niveau: "unknown",
+      score: 0,
+      conseil: "⚠️ Le modèle n'a détecté aucune espèce connue. Essayez avec une photo nette d'une feuille (tomate, pomme, maïs, raisin, pêche, poivron, pomme de terre, fraise, cerise, myrtille, orange, soja, courge, framboise).",
+    };
+  }
+  const best  = raw.predictions.reduce((a,b) => a.confidence > b.confidence ? a : b);
   const score = Math.round(best.confidence * 100);
   const mapped = CLASS_MAP[best.class];
-  if (mapped) {
-    return { ...mapped, score };
-  }
-  // Classe inconnue — fallback générique basé sur la confiance
+  if (mapped) return { ...mapped, score };
   const niveau = score >= 85 ? "critical" : score >= 55 ? "sick" : "healthy";
   return {
     maladie: `Maladie détectée (classe ${best.class})`,
-    niveau,
-    score,
-    conseil: "Consulter un agronome pour identification précise."
+    niveau, score,
+    conseil: "Consulter un agronome pour identification précise.",
   };
 }
 
@@ -1463,7 +1695,7 @@ const MOCK = [
   { maladie:"Oïdium",               niveau:"sick",     score:81, conseil:"Traitement au bicarbonate ou soufre. Améliorer la ventilation." },
 ];
 const COLORS = ["#1db954","#3b82f6","#f59e0b","#ef4444","#a855f7","#06b6d4","#ec4899","#eab308"];
-const bcolor  = n => n==="healthy"?"#1db954":n==="critical"?"#ef4444":"#f59e0b";
+const bcolor  = n => n==="healthy"?"#1db954":n==="critical"?"#ef4444":n==="unknown"?"#64748b":"#f59e0b";
 const fmtFull = d => d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
 const fmtTime = d => d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
 const today   = () => new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
@@ -1843,8 +2075,9 @@ function AchievementToast({ data, onDone }) {
 }
 
 /* ══════════════ LIVE TICKER (hook) ══════════════ */
-function useTicker(result) {
-  var base=["ESP32-CAM · Online","YOLOv8 · Chargé","Accuracy · 94.7%","Flask API · Prête","MongoDB · OK"];
+function useTicker(result, connected) {
+  var esp32Status = connected?"ESP32-CAM · Connectée ✓":"ESP32-CAM · Hors ligne";
+  var base=[esp32Status,"ViT / EfficientNet · Chargé","38 classes PlantVillage","Flask API · Prête","HuggingFace · Actif"];
   var msgs=result?["Dernier: "+result.maladie.slice(0,22),"Conf: "+result.score+"%"].concat(base):base;
   var [idx,setIdx]=useState(0), [tick,setTick]=useState(0);
   useEffect(function(){
@@ -2341,8 +2574,34 @@ function App() {
   const fileRef = useRef();
   const {s:sensors, hist:sHist} = useSensors();
 
+  // ── État ESP32-CAM ────────────────────────────────────────────────────────
+  const [esp32Ip,          setEsp32Ip]          = useState(()=>localStorage.getItem('esp32Ip')||'');
+  const [esp32Connected,   setEsp32Connected]   = useState(false);
+  const [esp32Checking,    setEsp32Checking]    = useState(false);
+  const [esp32Mode,        setEsp32Mode]        = useState(false);  // false=upload true=cam
+  const [esp32SettingsOpen,setEsp32SettingsOpen]= useState(false);
+  const [esp32IpDraft,     setEsp32IpDraft]     = useState('');
+  const [esp32TestMsg,     setEsp32TestMsg]     = useState(null);  // {ok,msg}
+  const [esp32Testing,     setEsp32Testing]     = useState(false);
+
   useEffect(()=>{ const id=setInterval(()=>setNow(new Date()),1000); return ()=>clearInterval(id); },[]);
   useEffect(()=>{ document.body.classList.toggle("dark", darkMode); },[darkMode]);
+
+  // ── Polling ESP32 — vérification toutes les 5 secondes ───────────────────
+  useEffect(()=>{
+    if (!esp32Ip) { setEsp32Connected(false); return; }
+    let cancelled = false;
+    const check = async () => {
+      try {
+        const r = await fetch(`${API_URL}/api/esp32/status?ip=${encodeURIComponent(esp32Ip)}`);
+        const d = await r.json();
+        if (!cancelled) setEsp32Connected(!!d.connected);
+      } catch { if (!cancelled) setEsp32Connected(false); }
+    };
+    check();
+    const id = setInterval(check, 5000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [esp32Ip]);
   useEffect(()=>{
     if (!profileOpen) return;
     const close = (e) => { if (!e.target.closest(".nav-profile")) setProfileOpen(false); };
@@ -2365,6 +2624,47 @@ function App() {
     const rd=new FileReader(); rd.onload=e=>setImageSrc(e.target.result); rd.readAsDataURL(f);
   };
 
+  /* ── Test de connexion ESP32 depuis le modal ── */
+  const testEsp32Connection = async () => {
+    const ip = esp32IpDraft.trim();
+    if (!ip) return;
+    setEsp32Testing(true); setEsp32TestMsg(null);
+    try {
+      const r = await fetch(`${API_URL}/api/esp32/status?ip=${encodeURIComponent(ip)}`);
+      const d = await r.json();
+      if (d.connected) {
+        setEsp32TestMsg({ok:true, msg:`ESP32-CAM connectée à ${ip} — Flux : :81/stream`});
+        setEsp32Connected(true);
+      } else {
+        setEsp32TestMsg({ok:false, msg: d.message || `Hôte ${ip} inaccessible`});
+        setEsp32Connected(false);
+      }
+    } catch(e) {
+      setEsp32TestMsg({ok:false, msg:`Erreur réseau : ${e.message}`});
+    } finally { setEsp32Testing(false); }
+  };
+
+  /* ── Logique partagée post-analyse ── */
+  const _handleAnalysisResult = (data, imgName, srcTag) => {
+    setResult(data);
+    setHistory(p=>{
+      const next=[{id:Date.now(),image:imgName,...data,date:new Date(),source:srcTag},...p];
+      if(next.length===1)  unlockAchievement('first_analysis',{icon:'🔬',title:'Première analyse !',desc:'1ère détection IA lancée.',xp:100});
+      if(next.length===5)  unlockAchievement('five_analyses', {icon:'🏅',title:'5 analyses effectuées',desc:'Vous maîtrisez PlantAI !',xp:200});
+      if(next.length===10) unlockAchievement('ten_analyses',  {icon:'⭐',title:'Analyste expert',desc:'10 analyses réalisées.',xp:500});
+      if(next.length===50) unlockAchievement('fifty_analyses',{icon:'🏆',title:'Expert confirmé',desc:'50 analyses — impressionnant !',xp:1500});
+      return next;
+    });
+    if (data.niveau==="critical") { setAlertModal(data); setAlertBar(data); }
+    else if (data.niveau==="sick")    showToast(`⚠️ Plante infectée : ${data.maladie} (${data.score}%)`,"error");
+    else if (data.niveau==="healthy") {
+      showToast(`✅ Plante saine — Confiance : ${data.score}%`,"success");
+      fireConfetti();
+      unlockAchievement('first_healthy',{icon:'🌿',title:'Plante saine !',desc:'Aucune maladie détectée.',xp:50});
+    }
+  };
+
+  /* ── Analyse depuis upload fichier ── */
   const analyze = async () => {
     if (!imageFile) return;
     setLoading(true); setResult(null);
@@ -2373,46 +2673,53 @@ function App() {
       const res = await fetch(`${API_URL}/api/predict`, { method:"POST", body:fd });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const raw = await res.json();
-      // Vérifier si le backend a renvoyé une erreur
       if (raw.error) throw new Error(raw.error);
-      // Transformer la réponse YOLOv8 → format frontend
-      const data = transformBackendResponse(raw);
-      setResult(data);
-      setHistory(p=>{
-        var next=[{id:Date.now(),image:fileName,...data,date:new Date(),source:"api"},...p];
-        if(next.length===1) unlockAchievement('first_analysis',{icon:'🔬',title:'Première analyse !',desc:'Vous avez lancé votre 1ère détection IA.',xp:100});
-        if(next.length===5) unlockAchievement('five_analyses',{icon:'🏅',title:'5 analyses effectuées',desc:'Vous commencez à maîtriser PlantAI !',xp:200});
-        if(next.length===10) unlockAchievement('ten_analyses',{icon:'⭐',title:'Analyste expert',desc:'10 analyses réalisées. Impressionnant !',xp:500});
-        return next;
-      });
-      if (data.niveau==="critical") { setAlertModal(data); setAlertBar(data); }
-      else if (data.niveau==="sick") { showToast(`⚠️ Plante infectée : ${data.maladie} (${data.score}%)`,"error"); }
-      else {
-        showToast(`✅ Plante saine — Confiance : ${data.score}%`,"success");
-        fireConfetti();
-        unlockAchievement('first_healthy',{icon:'🌿',title:'Plante saine détectée !',desc:'Votre plante est en parfaite santé.',xp:50});
-      }
+      _handleAnalysisResult(transformBackendResponse(raw), fileName, "api");
     } catch(err) {
-      // Fallback mock si le backend est inaccessible
-      console.warn("Backend inaccessible, utilisation du mode démo :", err.message);
+      console.warn("Backend inaccessible, mode démo :", err.message);
       await new Promise(r=>setTimeout(r,1400));
       const data = MOCK[Math.floor(Math.random()*MOCK.length)];
-      setResult(data); setHistory(p=>[{id:Date.now(),image:fileName,...data,date:new Date(),source:"mock"},...p]);
-      if (data.niveau==="critical") { setAlertModal(data); setAlertBar(data); }
-      else if (data.niveau==="sick") { showToast(`⚠️ [Démo] ${data.maladie} (${data.score}%)`,"error"); }
-      else {
-        showToast(`✅ [Démo] Plante saine — ${data.score}%`,"success");
-        fireConfetti();
-        unlockAchievement('first_healthy',{icon:'🌿',title:'Plante saine détectée !',desc:'Aucune maladie détectée.',xp:50});
-      }
+      _handleAnalysisResult(data, fileName, "mock");
+    } finally { setLoading(false); }
+  };
+
+  /* ── Analyse depuis ESP32-CAM ── */
+  const analyzeFromEsp32 = async () => {
+    if (!esp32Ip) { setEsp32SettingsOpen(true); return; }
+    setLoading(true); setResult(null);
+    try {
+      const res = await fetch(`${API_URL}/api/esp32/capture`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ip: esp32Ip}),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const raw = await res.json();
+      if (raw.error) throw new Error(raw.error);
+      setFileName('ESP32-CAM');
+      setImageSrc(null);
+      _handleAnalysisResult(transformBackendResponse(raw), 'ESP32-CAM', 'esp32');
+    } catch(err) {
+      showToast(`❌ ESP32 erreur : ${err.message}`,"error");
+      console.error("ESP32 capture error:", err);
     } finally { setLoading(false); }
   };
 
   /* Banner props */
-  const healthColor = result ? (result.niveau==="healthy"?"green":result.niveau==="sick"?"orange":"red") : "green";
-  const healthIcon  = result ? (result.niveau==="healthy"?"✅":result.niveau==="sick"?"⚠️":"🚨") : "⏳";
+  const healthColor = result
+    ? (result.niveau==="healthy"?"green":result.niveau==="sick"?"orange":result.niveau==="unknown"?"":"red")
+    : "green";
+  const healthIcon  = result
+    ? (result.niveau==="healthy"?"✅":result.niveau==="sick"?"⚠️":result.niveau==="unknown"?"❓":"🚨")
+    : "⏳";
   const healthLabel = result ? result.maladie : "En attente…";
-  const healthSub   = loading ? "Analyse en cours — modèle CNN" : result ? `Analysé · Confiance : ${result.score}%` : "Soumettez une image pour démarrer";
+  const healthSub   = loading
+    ? "Analyse en cours — modèle CNN"
+    : result
+      ? (result.niveau==="unknown"
+          ? "⚠️ Espèce non reconnue — voir recommandation"
+          : `Analysé · Confiance : ${result.score}%`)
+      : "Soumettez une image pour démarrer";
 
   const TABS = [{id:"dashboard",label:"📊 Dashboard"},{id:"analyse",label:"🔍 Analyser"},{id:"history",label:"🗂️ Historique"},{id:"stats",label:"📈 Statistiques"}];
 
@@ -2422,7 +2729,7 @@ function App() {
   const [achievement, setAchievement] = useState(null);
   const achievedRef = useRef(new Set());
   const fireConfetti = triggerConfetti;
-  const ticker = useTicker(result);
+  const ticker = useTicker(result, esp32Connected);
   useScrollReveal(page);
 
   /* Ctrl+K command palette */
@@ -2500,7 +2807,7 @@ function App() {
 
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(20); doc.setFont("helvetica","bold");
-      doc.text("🌿 PlantAI — Student Plant Monitor", 14, 16);
+      doc.text("PlantAI — Student Plant Monitor", 14, 16);
       doc.setFontSize(9); doc.setFont("helvetica","normal");
       doc.text("Rapport de détection des maladies des plantes · Projet Tutoré 2026", 14, 24);
       doc.text(`Généré le : ${new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"2-digit",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"})}`, 14, 31);
@@ -2536,10 +2843,10 @@ function App() {
       doc.text("État des Capteurs ESP32 (Valeurs actuelles)", 14, y); y += 8;
 
       const sensorData = [
-        ["🌡️ Température", `${sensors.temp} °C`,     sensors.temp < 18?"Froid":sensors.temp>32?"Chaud":"Normal"],
-        ["💧 Humidité air",  `${sensors.humidity} %`, sensors.humidity<40?"Sec":sensors.humidity>80?"Saturé":"Normal"],
-        ["🌱 Humidité sol",  `${sensors.soil} %`,     sensors.soil<40?"Sec":sensors.soil>75?"Saturé":"Normal"],
-        ["☀️ Luminosité",    `${sensors.light} %`,    sensors.light<30?"Sombre":sensors.light>85?"Fort":"Normal"],
+        ["Temperature",   `${sensors.temp} deg C`,   sensors.temp < 18?"Froid":sensors.temp>32?"Chaud":"Normal"],
+        ["Humidite air",  `${sensors.humidity} %`,   sensors.humidity<40?"Sec":sensors.humidity>80?"Sature":"Normal"],
+        ["Humidite sol",  `${sensors.soil} %`,       sensors.soil<40?"Sec":sensors.soil>75?"Sature":"Normal"],
+        ["Luminosite",    `${sensors.light} %`,      sensors.light<30?"Sombre":sensors.light>85?"Fort":"Normal"],
       ];
       doc.autoTable({
         startY: y,
@@ -2569,7 +2876,7 @@ function App() {
         y += 26;
         if (result.conseil) {
           doc.setTextColor(13,110,46); doc.setFontSize(9); doc.setFont("helvetica","italic");
-          doc.text(`💡 ${result.conseil}`, 14, y, {maxWidth: W-28}); y += 14;
+          doc.text(`Conseil : ${result.conseil}`, 14, y, {maxWidth: W-28}); y += 14;
         }
       }
 
@@ -2585,7 +2892,7 @@ function App() {
             h.image||"image.jpg",
             h.maladie,
             `${h.score}%`,
-            h.niveau==="healthy"?"✓ Saine":h.niveau==="sick"?"⚠ Infectée":"✕ Critique",
+            h.niveau==="healthy"?"Saine":h.niveau==="sick"?"Infectee":"Critique",
             h.date.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}),
             h.note||"—",
           ]),
@@ -2667,7 +2974,14 @@ function App() {
           <button key={t.id} className={`nav-tab ${page===t.id?"active":""}`} onClick={()=>setPage(t.id)}>{t.label}</button>
         ))}
       </div>
-      <div className="nav-badge"><span className="pulse-dot"/>ESP32-CAM — Online</div>
+      <div
+        className={`esp32-badge ${esp32Ip ? (esp32Connected ? 'connected' : 'disconnected') : 'unconfigured'}`}
+        onClick={()=>{ setEsp32IpDraft(esp32Ip); setEsp32TestMsg(null); setEsp32SettingsOpen(true); }}
+        title="Cliquez pour configurer l'ESP32-CAM"
+      >
+        <span className={`esp32-dot ${esp32Ip?(esp32Connected?'on':'off'):'grey'}`}/>
+        📷 ESP32-CAM — {esp32Ip ? (esp32Connected ? 'Connectée' : 'Hors ligne') : 'Configurer'}
+      </div>
       <div className="live-ticker">
         <span className="ticker-dot"/>
         <span key={ticker.tick} className="ticker-text">{ticker.msg}</span>
@@ -2891,6 +3205,83 @@ function App() {
     {/* Toast */}
     {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
 
+    {/* ══ MODAL CONFIG ESP32-CAM ══ */}
+    {esp32SettingsOpen && (
+      <div className="esp32-modal-overlay" onClick={()=>setEsp32SettingsOpen(false)}>
+        <div className="esp32-modal" onClick={e=>e.stopPropagation()}>
+          <div className="esp32-modal-head">
+            <div className="esp32-modal-icon">📷</div>
+            <div>
+              <div className="esp32-modal-title">Configuration ESP32-CAM</div>
+              <div className="esp32-modal-sub">Entrez l'adresse IP locale de votre caméra ESP32</div>
+            </div>
+            <button className="esp32-modal-close" onClick={()=>setEsp32SettingsOpen(false)}>✕</button>
+          </div>
+
+          <div className="esp32-modal-body">
+            <div className="esp32-label">Adresse IP de l'ESP32-CAM</div>
+            <div className="esp32-input-wrap">
+              <input
+                className="esp32-ip-input"
+                type="text"
+                placeholder="ex : 192.168.1.42"
+                value={esp32IpDraft}
+                onChange={e=>{ setEsp32IpDraft(e.target.value); setEsp32TestMsg(null); }}
+                onKeyDown={e=>{ if(e.key==='Enter') testEsp32Connection(); }}
+                autoFocus
+              />
+              <button
+                className="esp32-btn-test"
+                onClick={testEsp32Connection}
+                disabled={!esp32IpDraft.trim()||esp32Testing}
+              >
+                {esp32Testing ? "⏳ Test…" : "🔌 Tester"}
+              </button>
+            </div>
+
+            {esp32TestMsg && (
+              <div className={`esp32-status-line ${esp32TestMsg.ok?"ok":"err"}`}>
+                {esp32TestMsg.ok ? "✅" : "❌"} {esp32TestMsg.msg}
+              </div>
+            )}
+
+            <div className="esp32-hints">
+              <strong>Comment trouver l'IP de l'ESP32 ?</strong><br/>
+              1. L'ESP32 affiche son IP sur le <strong>port série</strong> (Arduino Monitor)<br/>
+              2. Cherchez dans <code>192.168.x.x</code> sur votre routeur (DHCP)<br/>
+              3. Assurez-vous que l'ESP32 et votre PC sont sur le <strong>même réseau WiFi</strong><br/><br/>
+              <strong>Endpoints ESP32-CAM attendus :</strong><br/>
+              • <code>http://&lt;IP&gt;/capture</code> — capture JPEG<br/>
+              • <code>http://&lt;IP&gt;:81/stream</code> — flux MJPEG live
+            </div>
+          </div>
+
+          <div className="esp32-modal-footer">
+            <button className="esp32-btn-cancel" onClick={()=>setEsp32SettingsOpen(false)}>Annuler</button>
+            {esp32Ip && (
+              <button className="esp32-btn-cancel" style={{color:"#dc2626",borderColor:"#fca5a5"}}
+                onClick={()=>{ setEsp32Ip(''); localStorage.removeItem('esp32Ip'); setEsp32SettingsOpen(false); setEsp32Connected(false); showToast("🔌 ESP32 déconnectée"); }}>
+                Déconnecter
+              </button>
+            )}
+            <button
+              className="esp32-btn-save"
+              disabled={!esp32IpDraft.trim()}
+              onClick={()=>{
+                const ip = esp32IpDraft.trim();
+                setEsp32Ip(ip);
+                localStorage.setItem('esp32Ip', ip);
+                setEsp32SettingsOpen(false);
+                showToast(`📷 ESP32 configurée : ${ip}`,"success");
+              }}
+            >
+              💾 Enregistrer
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
     {/* ══ PAGE ══ */}
     <div className="page">
 
@@ -2908,7 +3299,7 @@ function App() {
             <div className="hb-value">{loading?"Processing…":healthLabel}</div>
             <div className="hb-sub">{healthSub}</div>
             <div className="hb-pill">
-              {healthIcon} {result?(result.niveau==="healthy"?"Saine":result.niveau==="sick"?"Infectée":"Critique"):"En attente"}
+              {healthIcon} {result?(result.niveau==="healthy"?"Saine":result.niveau==="sick"?"Infectée":result.niveau==="unknown"?"Non reconnue":"Critique"):"En attente"}
             </div>
             {result && (
               <div className="hb-conf">
@@ -3039,69 +3430,245 @@ function App() {
       {/* ════ ANALYSER ════ */}
       {page==="analyse" && (
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"16px"}}>
+
+          {/* ── Panneau gauche : source de l'image ── */}
           <div className="chart-card">
-            <div className="cc-title" style={{marginBottom:"4px"}}>📷 Image de la Feuille</div>
-            <div className="cc-sub">Photo via ESP32-CAM ou upload manuel</div>
-            <div
-              className={`upload-zone ${dragOver?"over":""}`}
-              onDrop={e=>{e.preventDefault();setDragOver(false);loadImg(e.dataTransfer.files[0]);}}
-              onDragOver={e=>{e.preventDefault();setDragOver(true);}}
-              onDragLeave={()=>setDragOver(false)}
-              onClick={()=>fileRef.current.click()}
-            >
-              <input type="file" accept="image/*" ref={fileRef} onChange={e=>loadImg(e.target.files[0])}/>
-              {imageSrc
-                ? <div className={loading?"scan-wrap":""}>
-                    <img src={imageSrc} className="preview-img" alt="Aperçu" style={{display:"block",width:"100%"}}/>
-                    {loading && <>
-                      <div className="scan-beam"/>
-                      <div className="scan-grid"/>
-                      <div className="scan-corner tl"/><div className="scan-corner tr"/>
-                      <div className="scan-corner bl"/><div className="scan-corner br"/>
-                      <div className="scan-label">⬛ SCANNING… CNN INFERENCE</div>
-                    </>}
-                  </div>
-                : <><div className="uz-icon">🍃</div><div className="uz-text"><p><strong>Glissez-déposez</strong> ou <strong>cliquez</strong><br/>pour sélectionner une image<br/><span style={{fontSize:"0.72rem",color:"#94a3b8"}}>JPG · PNG · WEBP</span></p></div></>
-              }
+            <div className="cc-title" style={{marginBottom:"4px"}}>📷 Source de l'image</div>
+            <div className="cc-sub">Upload manuel ou capture directe depuis l'ESP32-CAM</div>
+
+            {/* Toggle Upload / ESP32 Camera */}
+            <div className="cam-mode-toggle">
+              <button className={`cam-mode-btn ${!esp32Mode?"active":""}`} onClick={()=>setEsp32Mode(false)}>
+                📁 Upload fichier
+              </button>
+              <button className={`cam-mode-btn ${esp32Mode?"active":""}`} onClick={()=>setEsp32Mode(true)}>
+                📷 ESP32-CAM
+              </button>
             </div>
-            {fileName && <p style={{fontSize:"0.72rem",color:"var(--text3)",marginTop:"7px",textAlign:"center"}}>📎 {fileName}</p>}
-            <button className="btn-primary" onClick={analyze} disabled={!imageSrc||loading}>
-              {loading?<><div className="spinner"/>Inférence CNN…</>:<>🔍 Lancer la détection IA</>}
-            </button>
+
+            {/* ── MODE UPLOAD ── */}
+            {!esp32Mode && <>
+              <div
+                className={`upload-zone ${dragOver?"over":""}`}
+                onDrop={e=>{e.preventDefault();setDragOver(false);loadImg(e.dataTransfer.files[0]);}}
+                onDragOver={e=>{e.preventDefault();setDragOver(true);}}
+                onDragLeave={()=>setDragOver(false)}
+                onClick={()=>fileRef.current.click()}
+              >
+                <input type="file" accept="image/*" ref={fileRef} onChange={e=>loadImg(e.target.files[0])}/>
+                {imageSrc
+                  ? <div className={loading?"scan-wrap":""}>
+                      <img src={imageSrc} className="preview-img" alt="Aperçu" style={{display:"block",width:"100%"}}/>
+                      {loading && <>
+                        <div className="scan-beam"/><div className="scan-grid"/>
+                        <div className="scan-corner tl"/><div className="scan-corner tr"/>
+                        <div className="scan-corner bl"/><div className="scan-corner br"/>
+                        <div className="scan-label">⬛ SCANNING… IA INFERENCE</div>
+                      </>}
+                    </div>
+                  : <><div className="uz-icon">🍃</div><div className="uz-text"><p><strong>Glissez-déposez</strong> ou <strong>cliquez</strong><br/>pour sélectionner une image<br/><span style={{fontSize:"0.72rem",color:"#94a3b8"}}>JPG · PNG · WEBP</span></p></div></>
+                }
+              </div>
+              {fileName && fileName !== 'ESP32-CAM' && <p style={{fontSize:"0.72rem",color:"var(--text3)",marginTop:"7px",textAlign:"center"}}>📎 {fileName}</p>}
+              <button className="btn-primary" onClick={analyze} disabled={!imageSrc||loading}>
+                {loading?<><div className="spinner"/>Analyse IA en cours…</>:<>🔍 Lancer la détection IA</>}
+              </button>
+            </>}
+
+            {/* ── MODE ESP32-CAM ── */}
+            {esp32Mode && <>
+              {/* Flux live ou hors-ligne */}
+              <div className="esp32-stream-wrap">
+                {esp32Connected && esp32Ip
+                  ? <>
+                      {/* Proxy MJPEG via backend pour éviter les CORS */}
+                      <img
+                        src={`${API_URL}/api/esp32/stream?ip=${encodeURIComponent(esp32Ip)}&t=${Date.now()}`}
+                        alt="ESP32 Live Feed"
+                        style={{width:"100%",display:"block"}}
+                        onError={e=>{ e.target.style.display="none"; }}
+                      />
+                      <div className="esp32-overlay-badge">
+                        <span className="rec-dot"/>
+                        LIVE · {esp32Ip}
+                      </div>
+                    </>
+                  : <div className="esp32-offline-box">
+                      <div className="esp32-offline-icon">📷</div>
+                      <div className="esp32-offline-title">
+                        {esp32Ip ? "ESP32-CAM hors ligne" : "ESP32-CAM non configurée"}
+                      </div>
+                      <div className="esp32-offline-sub">
+                        {esp32Ip
+                          ? `Impossible de joindre ${esp32Ip}. Vérifiez que la caméra est allumée et sur le même réseau WiFi.`
+                          : "Cliquez sur le badge ESP32 en haut à droite pour entrer l'adresse IP de votre caméra."}
+                      </div>
+                      <button className="btn-esp32-configure" onClick={()=>{ setEsp32IpDraft(esp32Ip); setEsp32TestMsg(null); setEsp32SettingsOpen(true); }}>
+                        ⚙️ {esp32Ip ? "Reconfigurer" : "Configurer maintenant"}
+                      </button>
+                    </div>
+                }
+              </div>
+
+              {/* Statut connexion */}
+              <div style={{
+                display:"flex",alignItems:"center",gap:"8px",
+                padding:"8px 12px",borderRadius:"10px",marginBottom:"6px",
+                background: esp32Connected?"#dcfce7":"#fef2f2",
+                border: `1px solid ${esp32Connected?"#86efac":"#fca5a5"}`,
+                fontSize:"0.76rem",fontWeight:700,
+                color: esp32Connected?"#16a34a":"#dc2626"
+              }}>
+                <span style={{
+                  width:"8px",height:"8px",borderRadius:"50%",flexShrink:0,
+                  background: esp32Connected?"#1db954":"#ef4444",
+                }}/>
+                {esp32Connected
+                  ? `✓ ESP32-CAM connectée · ${esp32Ip} · Prête`
+                  : esp32Ip ? `✗ Hors ligne · ${esp32Ip}` : "⚠ IP non configurée"}
+                {!esp32Ip && (
+                  <button
+                    onClick={()=>{ setEsp32IpDraft(''); setEsp32TestMsg(null); setEsp32SettingsOpen(true); }}
+                    style={{marginLeft:"auto",padding:"3px 10px",borderRadius:"6px",border:"1.5px solid #dc2626",background:"#fff",color:"#dc2626",fontSize:"0.7rem",fontWeight:700,cursor:"pointer"}}>
+                    Configurer
+                  </button>
+                )}
+              </div>
+
+              {/* Bouton capturer */}
+              <button
+                className="btn-capture"
+                onClick={analyzeFromEsp32}
+                disabled={loading}
+              >
+                {loading
+                  ? <><div className="spinner" style={{width:"18px",height:"18px",borderWidth:"2px",borderColor:"rgba(255,255,255,0.3)",borderTopColor:"#fff"}}/>Analyse en cours…</>
+                  : <><span style={{fontSize:"1.1rem"}}>📸</span> Capturer &amp; Analyser</>
+                }
+              </button>
+
+              <p style={{fontSize:"0.68rem",color:"var(--text3)",marginTop:"8px",textAlign:"center",lineHeight:1.5}}>
+                Capture une photo instantanée depuis l'ESP32-CAM<br/>et lance l'analyse IA automatiquement.
+              </p>
+            </>}
           </div>
 
+          {/* ── Panneau droit : résultat IA ── */}
           <div className="chart-card">
             <div className="cc-title" style={{marginBottom:"4px"}}>🧠 Diagnostic IA</div>
-            <div className="cc-sub">Modèle CNN entraîné sur PlantVillage Dataset</div>
-            {!result&&!loading && <div className="result-idle"><span style={{fontSize:"2.5rem",opacity:.3}}>🌿</span><p>Soumettez une image<br/>pour obtenir le diagnostic.</p></div>}
-            {loading && <div className="result-idle"><span style={{fontSize:"2rem"}}>⚙️</span><p style={{lineHeight:1.7}}>Inférence en cours…<br/><span style={{fontSize:"0.72rem",color:"var(--text3)"}}>Le modèle CNN analyse l'image</span></p></div>}
+            <div className="cc-sub">
+              Modèle : EfficientNet / ViT — Dataset PlantVillage 38 classes
+              {result?.label && <span style={{marginLeft:"6px",fontSize:"0.65rem",background:"#dcfce7",color:"#16a34a",borderRadius:"4px",padding:"1px 6px",fontWeight:700}}>HuggingFace ViT</span>}
+            </div>
+
+            {!result&&!loading && <div className="result-idle"><span style={{fontSize:"2.5rem",opacity:.3}}>🌿</span><p>Soumettez une image<br/>ou capturez depuis l'ESP32<br/>pour obtenir le diagnostic.</p></div>}
+            {loading && (
+              <div className="result-idle">
+                <span style={{fontSize:"2rem"}}>⚙️</span>
+                <p style={{lineHeight:1.7}}>
+                  {esp32Mode ? "Capture ESP32 + inférence…" : "Inférence en cours…"}<br/>
+                  <span style={{fontSize:"0.72rem",color:"var(--text3)"}}>Modèle EfficientNet / ViT</span>
+                </p>
+              </div>
+            )}
+
             {result&&!loading && (
               <div className="result-card">
                 <div className={`rc-header ${result.niveau}`}>
-                  <span style={{fontSize:"1.4rem"}}>{result.niveau==="healthy"?"✅":result.niveau==="sick"?"⚠️":"🚨"}</span>
-                  <div className="rc-header-name">{result.maladie}</div>
+                  <span style={{fontSize:"1.4rem"}}>
+                    {result.niveau==="healthy"?"✅":result.niveau==="sick"?"⚠️":result.niveau==="unknown"?"❓":"🚨"}
+                  </span>
+                  <div>
+                    <div className="rc-header-name">{result.maladie}</div>
+                    {result.plante && <div style={{fontSize:"0.72rem",color:"rgba(255,255,255,0.75)",marginTop:"2px"}}>{result.plante}</div>}
+                  </div>
                 </div>
+
                 <div className="rc-body">
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:"20px",padding:"10px 0 6px"}}>
-                    <ArcGauge value={result.score} color={bcolor(result.niveau)} size={120}/>
-                    <div>
-                      <div style={{fontSize:"0.72rem",color:"var(--text3)",fontWeight:600,marginBottom:"6px",textTransform:"uppercase",letterSpacing:"1px"}}>Analyse IA</div>
-                      <div style={{fontSize:"0.78rem",color:"var(--text2)",lineHeight:1.6}}>
-                        Modèle : <strong style={{color:"var(--text)"}}>YOLOv8</strong><br/>
-                        Dataset : <strong style={{color:"var(--text)"}}>PlantVillage</strong><br/>
-                        Classes : <strong style={{color:"var(--text)"}}>38</strong>
+                  {result.niveau==="unknown"
+                    ? <div style={{padding:"10px 0"}}>
+                        <div style={{background:"#fef9c3",border:"1.5px solid #f59e0b",borderRadius:"12px",padding:"14px 16px",marginBottom:"12px"}}>
+                          <div style={{fontWeight:800,color:"#92400e",fontSize:"0.85rem",marginBottom:"8px"}}>❓ Confiance insuffisante</div>
+                          <div style={{fontSize:"0.76rem",color:"#78350f",lineHeight:1.7}}>{result.conseil}</div>
+                        </div>
+                        <div style={{background:"var(--green-pale)",border:"1.5px solid #a7f3c3",borderRadius:"12px",padding:"12px 14px",fontSize:"0.76rem",color:"var(--green-deep)",lineHeight:1.7}}>
+                          <strong>14 espèces supportées :</strong><br/>
+                          🍅 Tomate · 🍎 Pomme · 🌽 Maïs · 🍇 Raisin · 🍑 Pêche · 🌶️ Poivron<br/>
+                          🥔 Pomme de terre · 🍓 Fraise · 🍒 Cerise · 🫐 Myrtille · 🍊 Orange<br/>
+                          🌱 Soja · 🎃 Courge · 🫐 Framboise
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                  <div className="rc-row">
-                    <span className="rc-lbl">Statut phytosanitaire</span>
-                    <span className={`pill pill-${result.niveau}`}>{result.niveau==="healthy"?"Saine":result.niveau==="sick"?"Infectée":"Critique"}</span>
-                  </div>
-                  <div className="rc-row">
-                    <span className="rc-lbl">Source</span>
-                    <span className="rc-val" style={{fontSize:"0.72rem",color:"var(--text3)"}}>{fileName}</span>
-                  </div>
-                  {result.conseil&&<div className="rc-advice">💡 <strong>Recommandation :</strong> {result.conseil}</div>}
+                    : <>
+                        {/* Jauge + infos modèle */}
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:"20px",padding:"10px 0 6px"}}>
+                          <ArcGauge value={result.score} color={bcolor(result.niveau)} size={120}/>
+                          <div>
+                            {result.plante && <div className="rc-plant-badge">{result.plante}</div>}
+                            <div style={{fontSize:"0.72rem",color:"var(--text3)",fontWeight:600,marginBottom:"4px",textTransform:"uppercase",letterSpacing:"1px"}}>Modèle IA</div>
+                            <div style={{fontSize:"0.76rem",color:"var(--text2)",lineHeight:1.6}}>
+                              Architecture : <strong style={{color:"var(--text)"}}>ViT / EfficientNet</strong><br/>
+                              Dataset : <strong style={{color:"var(--text)"}}>PlantVillage</strong><br/>
+                              Classes : <strong style={{color:"var(--text)"}}>38</strong>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Statut */}
+                        <div className="rc-row">
+                          <span className="rc-lbl">Statut phytosanitaire</span>
+                          <span className={`pill pill-${result.niveau}`}>
+                            {result.niveau==="healthy"?"✅ Saine":result.niveau==="sick"?"⚠️ Infectée":"🚨 Critique"}
+                          </span>
+                        </div>
+
+                        {/* Source */}
+                        <div className="rc-row">
+                          <span className="rc-lbl">Source image</span>
+                          <span className="rc-val" style={{fontSize:"0.72rem",color:"var(--text3)"}}>
+                            {fileName==='ESP32-CAM' ? '📷 ESP32-CAM' : `📎 ${fileName}`}
+                          </span>
+                        </div>
+
+                        {/* Description */}
+                        {result.description && (
+                          <div className="rc-detail-row">
+                            <strong>Description :</strong> {result.description}
+                          </div>
+                        )}
+
+                        {/* Traitement */}
+                        {result.traitement && result.niveau !== "healthy" && (
+                          <div className="rc-treatment">
+                            💊 <strong>Traitement :</strong> {result.traitement}
+                          </div>
+                        )}
+
+                        {/* Conseil */}
+                        {result.conseil && <div className="rc-advice">💡 <strong>Conseil :</strong> {result.conseil}</div>}
+
+                        {/* Top-5 prédictions */}
+                        {result.allPredictions && result.allPredictions.length > 1 && (
+                          <div className="rc-top5">
+                            <div className="rc-top5-title">Top-5 Prédictions</div>
+                            {result.allPredictions.slice(0,5).map((p,i)=>{
+                              const pct = Math.round((p.score||0)*100);
+                              return (
+                                <div className="rc-top5-item" key={i}>
+                                  <span style={{minWidth:"14px",color:"var(--text3)",fontSize:"0.65rem"}}>{i+1}</span>
+                                  <span style={{flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                                    {(p.label||'').replace(/___/g,' — ').replace(/_/g,' ')}
+                                  </span>
+                                  <div className="rc-top5-bar-bg">
+                                    <div className="rc-top5-bar-fill" style={{width:`${pct}%`,background:i===0?bcolor(result.niveau):"#94a3b8"}}/>
+                                  </div>
+                                  <span className="rc-top5-pct">{pct}%</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </>
+                  }
                 </div>
               </div>
             )}
@@ -3136,7 +3703,7 @@ function App() {
                         <div style={{width:`${h.score}%`,height:"100%",borderRadius:"4px",background:bcolor(h.niveau)}}/>
                       </div>
                     </td>
-                    <td><span className={`pill pill-${h.niveau}`}>{h.niveau==="healthy"?"Saine":h.niveau==="sick"?"Infectée":"Critique"}</span></td>
+                    <td><span className={`pill pill-${h.niveau}`}>{h.niveau==="healthy"?"Saine":h.niveau==="sick"?"Infectée":h.niveau==="unknown"?"❓ Non reconnue":"Critique"}</span></td>
                     <td style={{color:"var(--text3)",fontSize:"0.72rem"}}>{fmtFull(h.date)}</td>
                     <td>
                       <button className={`btn-note ${h.note?"has-note":""}`} onClick={()=>openNote(h)}>
