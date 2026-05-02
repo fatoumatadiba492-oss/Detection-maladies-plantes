@@ -1310,6 +1310,13 @@
     .rv3 { transition-delay: 0.24s; }
     .rv4 { transition-delay: 0.36s; }
 
+    /* ══════════ FADE-IN-UP (CSS keyframe — toujours visible) ══════════ */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in-up { animation: fadeInUp 0.5s ease both; }
+
     /* ══════════ LIVE TICKER ══════════ */
     .live-ticker {
       display: flex; align-items: center; gap: 7px; background: var(--bg);
@@ -1589,6 +1596,164 @@
     .rc-top5-bar-bg { flex:1; height: 5px; background: var(--border); border-radius: 10px; overflow: hidden; }
     .rc-top5-bar-fill { height: 100%; border-radius: 10px; transition: width 0.8s; }
     .rc-top5-pct { font-weight: 700; color: var(--text); min-width: 36px; text-align: right; font-size: 0.7rem; }
+
+    /* ══════════════ FARMER AVATAR ══════════════ */
+    .fa-wrap {
+      position: fixed; bottom: 24px; right: 24px; z-index: 1000;
+      display: flex; align-items: flex-end; gap: 0;
+      pointer-events: none;
+    }
+    @media(max-width:768px){ .fa-wrap { transform: scale(0.6); transform-origin: bottom right; } }
+
+    /* ── Bulle de dialogue ── */
+    .fa-bubble {
+      background: #fff; border: 1.5px solid rgba(29,185,84,.35);
+      border-radius: 14px; padding: 10px 14px;
+      max-width: 200px; margin-bottom: 22px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.18);
+      position: relative;
+      animation: fa-pop 0.45s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+    body.dark .fa-bubble { background: #1a1d27; border-color: rgba(29,185,84,.4); }
+    .fa-bubble-text { font-size: .72rem; font-weight: 600; color: #0f172a; line-height: 1.55; margin: 0; }
+    body.dark .fa-bubble-text { color: #f1f5f9; }
+    /* Queue droite de la bulle */
+    .fa-bubble::after {
+      content: ''; position: absolute; right: -9px; bottom: 22px;
+      border: 8px solid transparent; border-left-color: #fff; border-right: 0;
+    }
+    .fa-bubble::before {
+      content: ''; position: absolute; right: -12px; bottom: 21px;
+      border: 9px solid transparent; border-left-color: rgba(29,185,84,.35); border-right: 0;
+    }
+    body.dark .fa-bubble::after  { border-left-color: #1a1d27; }
+    body.dark .fa-bubble::before { border-left-color: rgba(29,185,84,.4); }
+    @keyframes fa-pop { from{opacity:0;transform:scale(0) translateY(16px)} to{opacity:1;transform:scale(1) translateY(0)} }
+
+    /* ── SVG transforms ── */
+    .fa-arm-l  { transform-box: fill-box; transform-origin: 100% 50%; transition: transform .4s ease; }
+    .fa-arm-r  { transform-box: fill-box; transform-origin: 0%   50%; transition: transform .4s ease; }
+    .fa-head-g { transform-box: fill-box; transform-origin: 50%  50%; transition: transform .5s ease; }
+    .fa-body-g { transform-box: fill-box; transform-origin: 50% 100%; }
+    .fa-eye-l  { transform-box: fill-box; transform-origin: 50%  50%; }
+    .fa-eye-r  { transform-box: fill-box; transform-origin: 50%  50%; }
+    .fa-conf-g { transform-box: fill-box; transform-origin: 50%  50%; }
+
+    /* ── Expressions : masquage par défaut ── */
+    .fa-brow-w, .fa-brow-h   { display: none; }
+    .fa-m-sad, .fa-m-happy,
+    .fa-m-hmm, .fa-m-open    { display: none; }
+    .fa-tears, .fa-confetti  { display: none; }
+    .fa-sweat, .fa-q-mark    { display: none; }
+
+    /* ═══ IDLE ═══ */
+    .farmer-idle .fa-body-g { animation: fa-breathe 3s ease-in-out infinite; }
+    .farmer-idle .fa-head-g { animation: fa-sway    4s ease-in-out infinite; }
+
+    /* ═══ LOADING ═══ */
+    .farmer-loading .fa-brow-n     { display: none; }
+    .farmer-loading .fa-brow-w     { display: block; }
+    .farmer-loading .fa-m-smile    { display: none; }
+    .farmer-loading .fa-m-hmm      { display: block; }
+    .farmer-loading .fa-sweat      { display: block; }
+    .farmer-loading .fa-arm-l      { transform: rotate(20deg); }
+    .farmer-loading .fa-arm-r      { transform: rotate(-20deg); }
+    .farmer-loading .fa-avatar-inner{ animation: fa-tremble .12s linear infinite; }
+    .farmer-loading .fa-eye-l      { animation: fa-fast-blink .45s ease-in-out infinite; }
+    .farmer-loading .fa-eye-r      { animation: fa-fast-blink .45s ease-in-out .06s infinite; }
+
+    /* ═══ HEALTHY ═══ */
+    .farmer-healthy .fa-brow-n     { display: none; }
+    .farmer-healthy .fa-brow-h     { display: block; }
+    .farmer-healthy .fa-m-smile    { display: none; }
+    .farmer-healthy .fa-m-happy    { display: block; }
+    .farmer-healthy .fa-confetti   { display: block; }
+    .farmer-healthy .fa-cheek      { opacity: .75 !important; }
+    .farmer-healthy .fa-avatar-inner{ animation: fa-jump .65s ease-in-out infinite; }
+    .farmer-healthy .fa-arm-l      { animation: fa-clap-l .28s ease-in-out infinite alternate; }
+    .farmer-healthy .fa-arm-r      { animation: fa-clap-r .28s ease-in-out infinite alternate; }
+    .farmer-healthy .fa-c1 { animation: fa-cf1 1s ease-out 0.00s infinite; }
+    .farmer-healthy .fa-c2 { animation: fa-cf2 1s ease-out 0.20s infinite; }
+    .farmer-healthy .fa-c3 { animation: fa-cf3 1s ease-out 0.40s infinite; }
+    .farmer-healthy .fa-c4 { animation: fa-cf4 1s ease-out 0.10s infinite; }
+    .farmer-healthy .fa-c5 { animation: fa-cf5 1s ease-out 0.30s infinite; }
+    .farmer-healthy .fa-c6 { animation: fa-cf6 1s ease-out 0.50s infinite; }
+    .farmer-healthy .fa-c7 { animation: fa-cf7 1s ease-out 0.15s infinite; }
+    .farmer-healthy .fa-c8 { animation: fa-cf8 1s ease-out 0.35s infinite; }
+
+    /* ═══ SICK ═══ */
+    .farmer-sick .fa-brow-n  { display: none; }
+    .farmer-sick .fa-brow-w  { display: block; }
+    .farmer-sick .fa-m-smile { display: none; }
+    .farmer-sick .fa-m-sad   { display: block; }
+    .farmer-sick .fa-tears   { display: block; }
+    .farmer-sick .fa-arm-l   { transform: rotate(-22deg); }
+    .farmer-sick .fa-arm-r   { transform: rotate(22deg); }
+    .farmer-sick .fa-head-g  { animation: fa-cry-sway 2s ease-in-out infinite; }
+    .farmer-sick .fa-t1 { animation: fa-tear .9s ease-in 0.00s infinite; }
+    .farmer-sick .fa-t2 { animation: fa-tear .9s ease-in 0.35s infinite; }
+    .farmer-sick .fa-t3 { animation: fa-tear .9s ease-in 0.15s infinite; }
+    .farmer-sick .fa-t4 { animation: fa-tear .9s ease-in 0.50s infinite; }
+
+    /* ═══ CRITICAL ═══ */
+    .farmer-critical .fa-brow-n  { display: none; }
+    .farmer-critical .fa-brow-w  { display: block; }
+    .farmer-critical .fa-m-smile { display: none; }
+    .farmer-critical .fa-m-sad   { display: block; }
+    .farmer-critical .fa-tears   { display: block; }
+    .farmer-critical .fa-arm-l   { transform: rotate(-28deg); }
+    .farmer-critical .fa-arm-r   { transform: rotate(28deg); }
+    .farmer-critical .fa-head-g  { animation: fa-cry-sway 1.2s ease-in-out infinite; }
+    .farmer-critical .fa-avatar-inner { animation: fa-slump .5s ease-in-out infinite alternate; }
+    .farmer-critical .fa-t1 { animation: fa-tear .65s ease-in 0.00s infinite; }
+    .farmer-critical .fa-t2 { animation: fa-tear .65s ease-in 0.20s infinite; }
+    .farmer-critical .fa-t3 { animation: fa-tear .65s ease-in 0.10s infinite; }
+    .farmer-critical .fa-t4 { animation: fa-tear .65s ease-in 0.30s infinite; }
+
+    /* ═══ UNKNOWN ═══ */
+    .farmer-unknown .fa-m-smile  { display: none; }
+    .farmer-unknown .fa-m-hmm    { display: block; }
+    .farmer-unknown .fa-q-mark   { display: block; }
+    .farmer-unknown .fa-head-g   { animation: fa-head-tilt 2s ease-in-out infinite; }
+    .farmer-unknown .fa-arm-r    { animation: fa-scratch .45s ease-in-out infinite alternate; }
+
+    /* ══════════ KEYFRAMES ══════════ */
+    @keyframes fa-breathe  { 0%,100%{transform:scaleY(1)}      50%{transform:scaleY(1.04)} }
+    @keyframes fa-sway     { 0%,100%{transform:rotate(-4deg)}  50%{transform:rotate(4deg)} }
+    @keyframes fa-tremble  {
+      0%,100%{transform:translate(0,0)}
+      25%{transform:translate(-3px,-1px)}
+      75%{transform:translate(3px,1px)}
+    }
+    @keyframes fa-fast-blink {
+      0%,85%,100%{transform:scaleY(1)}
+      45%,55%{transform:scaleY(.12)}
+    }
+    @keyframes fa-jump {
+      0%,100%{transform:translateY(0)}
+      35%,65%{transform:translateY(-28px)}
+    }
+    @keyframes fa-clap-l  { from{transform:rotate(0)}   to{transform:rotate(80deg)} }
+    @keyframes fa-clap-r  { from{transform:rotate(0)}   to{transform:rotate(-80deg)} }
+    @keyframes fa-cry-sway{ 0%,100%{transform:rotate(8deg)} 50%{transform:rotate(13deg)} }
+    @keyframes fa-slump   { 0%{transform:translateY(0)} 100%{transform:translateY(4px)} }
+    @keyframes fa-head-tilt{ 0%,100%{transform:rotate(-7deg)} 50%{transform:rotate(7deg)} }
+    @keyframes fa-scratch {
+      0%{transform:rotate(-75deg) translateY(-6px)}
+      100%{transform:rotate(-95deg) translateY(-10px)}
+    }
+    @keyframes fa-tear {
+      0%{transform:translateY(0);opacity:1}
+      100%{transform:translateY(26px);opacity:0}
+    }
+    @keyframes fa-cf1{0%{transform:translate(0,0) rotate(0);opacity:1}100%{transform:translate(25px,-55px) rotate(300deg);opacity:0}}
+    @keyframes fa-cf2{0%{transform:translate(0,0) rotate(0);opacity:1}100%{transform:translate(-20px,-60px) rotate(-240deg);opacity:0}}
+    @keyframes fa-cf3{0%{transform:translate(0,0) rotate(0);opacity:1}100%{transform:translate(30px,-45px) rotate(180deg);opacity:0}}
+    @keyframes fa-cf4{0%{transform:translate(0,0) rotate(0);opacity:1}100%{transform:translate(-28px,-52px) rotate(-270deg);opacity:0}}
+    @keyframes fa-cf5{0%{transform:translate(0,0) rotate(0);opacity:1}100%{transform:translate(15px,-65px) rotate(360deg);opacity:0}}
+    @keyframes fa-cf6{0%{transform:translate(0,0) rotate(0);opacity:1}100%{transform:translate(-35px,-55px) rotate(-180deg);opacity:0}}
+    @keyframes fa-cf7{0%{transform:translate(0,0) rotate(0);opacity:1}100%{transform:translate(22px,-42px) rotate(240deg);opacity:0}}
+    @keyframes fa-cf8{0%{transform:translate(0,0) rotate(0);opacity:1}100%{transform:translate(-16px,-58px) rotate(-300deg);opacity:0}}
   </style>
 </head>
 <body>
@@ -2090,16 +2255,32 @@ function useTicker(result, connected) {
 /* ══════════════ SCROLL REVEAL (hook) ══════════════ */
 function useScrollReveal(page) {
   useEffect(function(){
-    var els=document.querySelectorAll('.reveal');
-    if(!els.length)return;
-    if(!('IntersectionObserver' in window)){
-      els.forEach(function(el){el.classList.add('visible');});return;
-    }
-    var obs=new IntersectionObserver(function(entries){
-      entries.forEach(function(e){if(e.isIntersecting)e.target.classList.add('visible');});
-    },{threshold:0.08,rootMargin:'0px 0px -20px 0px'});
-    els.forEach(function(el){obs.observe(el);});
-    return function(){obs.disconnect();};
+    // Reset all reveal elements first (page change)
+    document.querySelectorAll('.reveal').forEach(function(el){el.classList.remove('visible');});
+
+    var activate = function(){
+      var els=document.querySelectorAll('.reveal');
+      if(!els.length)return;
+      if(!('IntersectionObserver' in window)){
+        els.forEach(function(el){el.classList.add('visible');});return;
+      }
+      var obs=new IntersectionObserver(function(entries){
+        entries.forEach(function(e){if(e.isIntersecting)e.target.classList.add('visible');});
+      },{threshold:0.01,rootMargin:'0px 0px 0px 0px'});
+      els.forEach(function(el){obs.observe(el);});
+      // Fallback: immediately reveal elements already in viewport
+      setTimeout(function(){
+        els.forEach(function(el){
+          var r=el.getBoundingClientRect();
+          if(r.top < window.innerHeight && r.bottom > 0) el.classList.add('visible');
+        });
+      }, 80);
+      return obs;
+    };
+
+    // Short delay to let React render the new page DOM
+    var t = setTimeout(function(){ activate(); }, 50);
+    return function(){ clearTimeout(t); };
   },[page]);
 }
 
@@ -2551,6 +2732,175 @@ function LoginPage({ onLogin /* onLogin(email) */ }) {
           </div>
 
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════ FARMER AVATAR COMPONENT ══════════════ */
+function FarmerAvatar(props) {
+  var result  = props.result;
+  var loading = props.loading;
+
+  var state = 'idle';
+  if (loading) {
+    state = 'loading';
+  } else if (result) {
+    if      (result.niveau === 'healthy')  state = 'healthy';
+    else if (result.niveau === 'critical') state = 'critical';
+    else if (result.niveau === 'sick')     state = 'sick';
+    else if (result.niveau === 'unknown')  state = 'unknown';
+  }
+
+  var bubbles = {
+    idle:     'Bonjour ! Soumettez une photo de votre plante, je vais vous aider ! 👋',
+    loading:  "En cours d'analyse… je croise les doigts ! 🤞",
+    healthy:  'Magnifique ! Votre plante est en parfaite santé ! 🌿',
+    sick:     'Oh non… votre plante souffre. Consultez les recommandations ! 💊',
+    critical: "C'est urgent ! Votre plante est en danger critique ! 🚨",
+    unknown:  "Hmm… je ne reconnais pas cette espèce dans ma base de données. 🤔",
+  };
+
+  return (
+    <div className={"fa-wrap farmer-" + state}>
+      {/* Bulle de dialogue — key=state force re-mount → rejoue l'anim pop */}
+      <div className="fa-bubble" key={state}>
+        <p className="fa-bubble-text">{bubbles[state]}</p>
+      </div>
+
+      {/* Personnage SVG */}
+      <div className="fa-avatar-inner">
+        <svg viewBox="0 0 100 185" width="88" height="163" xmlns="http://www.w3.org/2000/svg" overflow="visible">
+
+          {/* ── CONFETTI (HEALTHY) ── */}
+          <g className="fa-confetti">
+            <rect className="fa-c1" x="10" y="88" width="6" height="6" fill="#1db954" rx="1"/>
+            <rect className="fa-c2" x="84" y="84" width="5" height="5" fill="#f59e0b" rx="1"/>
+            <rect className="fa-c3" x="3"  y="102" width="4" height="8" fill="#3b82f6" rx="1"/>
+            <rect className="fa-c4" x="91" y="97"  width="6" height="4" fill="#ec4899" rx="1"/>
+            <circle className="fa-c5" cx="18" cy="116" r="4" fill="#a855f7"/>
+            <circle className="fa-c6" cx="80" cy="112" r="4" fill="#00e676"/>
+            <rect className="fa-c7" x="32" y="76" width="5" height="5" fill="#f59e0b" rx="1"/>
+            <rect className="fa-c8" x="62" y="74" width="4" height="7" fill="#ef4444" rx="1"/>
+          </g>
+
+          {/* ── LARMES (SICK / CRITICAL) ── */}
+          <g className="fa-tears">
+            <ellipse className="fa-t1" cx="40" cy="76" rx="2.5" ry="4.5" fill="#60a5fa"/>
+            <ellipse className="fa-t2" cx="60" cy="76" rx="2.5" ry="4.5" fill="#60a5fa"/>
+            <ellipse className="fa-t3" cx="37" cy="85" rx="2"   ry="3.5" fill="#93c5fd" opacity=".7"/>
+            <ellipse className="fa-t4" cx="63" cy="85" rx="2"   ry="3.5" fill="#93c5fd" opacity=".7"/>
+          </g>
+
+          {/* ── JAMBES ── */}
+          <rect x="33" y="140" width="14" height="30" fill="#1e3a8a" rx="4"/>
+          <rect x="53" y="140" width="14" height="30" fill="#1e3a8a" rx="4"/>
+
+          {/* ── BOTTES ── */}
+          <ellipse cx="40" cy="172" rx="13" ry="6.5" fill="#3d2b1f"/>
+          <ellipse cx="60" cy="172" rx="13" ry="6.5" fill="#3d2b1f"/>
+          <ellipse cx="37" cy="169" rx="5" ry="2.5" fill="#5d4037" opacity=".45"/>
+          <ellipse cx="57" cy="169" rx="5" ry="2.5" fill="#5d4037" opacity=".45"/>
+
+          {/* ── CORPS (salopette bleue) ── */}
+          <g className="fa-body-g">
+            <rect x="26" y="91" width="48" height="52" fill="#1d4ed8" rx="10"/>
+            <rect x="41" y="91" width="18" height="14" fill="white" rx="3" opacity=".18"/>
+            <rect x="43" y="110" width="14" height="11" fill="#1e40af" rx="3"/>
+            <rect x="45" y="112" width="10" height="7"  fill="#1d4ed8" rx="2"/>
+            <rect x="37" y="91" width="7" height="22" fill="#1e40af" rx="3" opacity=".6"/>
+            <rect x="56" y="91" width="7" height="22" fill="#1e40af" rx="3" opacity=".6"/>
+          </g>
+
+          {/* ── BRAS GAUCHE ── pivot à l'épaule droite */}
+          <g className="fa-arm-l">
+            <rect x="4" y="90" width="24" height="14" fill="#1d4ed8" rx="7"/>
+            <circle cx="7" cy="97" r="8" fill="#f4a261"/>
+            <ellipse cx="3" cy="92" rx="4" ry="3" fill="#f4a261" transform="rotate(-15 3 92)"/>
+          </g>
+
+          {/* ── BRAS DROIT ── pivot à l'épaule gauche */}
+          <g className="fa-arm-r">
+            <rect x="72" y="90" width="24" height="14" fill="#1d4ed8" rx="7"/>
+            <circle cx="93" cy="97" r="8" fill="#f4a261"/>
+            <ellipse cx="97" cy="92" rx="4" ry="3" fill="#f4a261" transform="rotate(15 97 92)"/>
+          </g>
+
+          {/* ── TÊTE + CHAPEAU (groupe pivotant) ── */}
+          <g className="fa-head-g">
+
+            {/* Chapeau de paille */}
+            <ellipse cx="50" cy="46" rx="35" ry="9" fill="#92400e" opacity=".28"/>
+            <path d="M 29 44 C 30 21 37 8 50 7 C 63 8 70 21 71 44 Z" fill="#d97706"/>
+            <path d="M 35 44 C 36 24 41 12 50 10 C 57 12 60 23 60 44 Z" fill="#fbbf24" opacity=".6"/>
+            <ellipse cx="50" cy="44" rx="34" ry="8" fill="#fbbf24"/>
+            <path d="M 32 40 Q 50 33 68 40" stroke="#92400e" strokeWidth="3" fill="none" strokeLinecap="round"/>
+            <circle cx="50" cy="34" r="3.5" fill="#dc2626"/>
+            <circle cx="50" cy="34" r="1.8" fill="#fde047"/>
+
+            {/* Visage */}
+            <circle cx="50" cy="65" r="20" fill="#f4a261"/>
+            <ellipse cx="50" cy="72" rx="18" ry="11" fill="#e8934f" opacity=".15"/>
+
+            {/* ── Sourcils ── */}
+            {/* Normal */}
+            <path className="fa-brow-n" d="M 36 54 Q 40 51 44 53" stroke="#7c4a00" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+            <path className="fa-brow-n" d="M 56 53 Q 60 51 64 54" stroke="#7c4a00" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+            {/* Inquiet — froncés vers le centre */}
+            <path className="fa-brow-w" d="M 36 53 Q 40 56 44 52" stroke="#7c4a00" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+            <path className="fa-brow-w" d="M 56 52 Q 60 56 64 53" stroke="#7c4a00" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+            {/* Heureux — levés */}
+            <path className="fa-brow-h" d="M 35 51 Q 40 47 44 50" stroke="#7c4a00" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+            <path className="fa-brow-h" d="M 56 50 Q 60 47 65 51" stroke="#7c4a00" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+
+            {/* ── Œil gauche ── */}
+            <g className="fa-eye-l">
+              <circle cx="41" cy="63" r="6" fill="white"/>
+              <circle cx="41" cy="63" r="3.5" fill="#1c1007"/>
+              <circle cx="42.5" cy="61.5" r="1.3" fill="white"/>
+            </g>
+
+            {/* ── Œil droit ── */}
+            <g className="fa-eye-r">
+              <circle cx="59" cy="63" r="6" fill="white"/>
+              <circle cx="59" cy="63" r="3.5" fill="#1c1007"/>
+              <circle cx="60.5" cy="61.5" r="1.3" fill="white"/>
+            </g>
+
+            {/* Joues */}
+            <ellipse className="fa-cheek" cx="34" cy="69" rx="6" ry="4" fill="#ff9a9a" opacity=".42"/>
+            <ellipse className="fa-cheek" cx="66" cy="69" rx="6" ry="4" fill="#ff9a9a" opacity=".42"/>
+
+            {/* Nez */}
+            <ellipse cx="50" cy="69" rx="3" ry="2.2" fill="#e07a3a" opacity=".5"/>
+
+            {/* ── Bouches ── */}
+            <path className="fa-m-smile" d="M 43 76 Q 50 82 57 76" stroke="#7c4a00" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+            {/* Grand sourire ouvert */}
+            <g className="fa-m-happy">
+              <path d="M 40 74 Q 50 88 60 74 Q 54 83 46 83 Z" fill="#dc2626" opacity=".88"/>
+              <path d="M 44 78 Q 50 83 56 78 Q 50 80 44 78 Z" fill="white" opacity=".65"/>
+            </g>
+            {/* Moue triste */}
+            <path className="fa-m-sad" d="M 43 80 Q 50 73 57 80" stroke="#7c4a00" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+            {/* Ligne plate/inquiète */}
+            <path className="fa-m-hmm" d="M 43 77 Q 50 75.5 57 77" stroke="#7c4a00" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+
+            {/* ── Goutte de sueur (LOADING) ── */}
+            <g className="fa-sweat">
+              <ellipse cx="69" cy="59" rx="3" ry="5" fill="#93c5fd" opacity=".82"/>
+              <path d="M 69 54 L 66 59 L 72 59 Z" fill="#93c5fd" opacity=".82"/>
+            </g>
+
+            {/* ── Point d'interrogation (UNKNOWN) ── */}
+            <text className="fa-q-mark" x="67" y="56" fontSize="13" fill="#94a3b8" fontWeight="bold">?</text>
+
+            {/* Cou */}
+            <rect x="44" y="84" width="12" height="9" fill="#f4a261"/>
+
+          </g>{/* fin fa-head-g */}
+
+        </svg>
       </div>
     </div>
   );
@@ -3288,6 +3638,9 @@ function App() {
       {/* ════ DASHBOARD ════ */}
       {page==="dashboard" && <>
 
+        {/* ── Cultivateur animé ── */}
+        <FarmerAvatar result={result} loading={loading}/>
+
         {/* Hero banners */}
         <div className="section-title">État de la Plante</div>
         <div className="hero-grid" style={{marginBottom:"20px"}}>
@@ -3344,7 +3697,7 @@ function App() {
 
         {/* Sparklines row — style image */}
         <div className="section-title">Tendances Capteurs</div>
-        <div className="charts-row reveal rv2">
+        <div className="charts-row fade-in-up">
           <div className="chart-card">
             <div className="cc-head">
               <div className="cc-title">📈 Activité Multi-Capteurs</div>
@@ -3378,7 +3731,7 @@ function App() {
 
         {/* Stats + Charts */}
         <div className="section-title">Analyses IA</div>
-        <div className="metrics-row reveal">
+        <div className="metrics-row fade-in-up" style={{animationDelay:"0.1s"}}>
           {[
             {icon:"📋",bg:"#e8f8ed",color:"#1db954",val:total,    label:"Total Analyses", trend:total?"Session en cours":"—",dir:"flat"},
             {icon:"✅",bg:"#f0fdf4",color:"#16a34a",val:healthy,  label:"Plantes Saines", trend:total?`${Math.round(healthy/total*100)}% du total`:"—",dir:"up"},
