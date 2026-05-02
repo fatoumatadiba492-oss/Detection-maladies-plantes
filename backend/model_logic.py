@@ -1,8 +1,18 @@
 """
 Moteur d'inférence — Détection des maladies des plantes
-Modèle primaire  : dima806/plant_disease_image_detection (HuggingFace ViT, 38 classes)
-Modèle secondaire: EfficientNet-B4 local si entraîné (model/plant_disease_efficientnet.pt)
-Fallback         : YOLOv8 si modèle local disponible
+─────────────────────────────────────────────────────────
+Étape 1 — Modèle spécifique (espèces connues PlantVillage) :
+  • EfficientNet-B4 local  (si entraîné, model/plant_disease_efficientnet.pt)
+  • HuggingFace ViT        (dima806/plant_disease_image_detection, 38 classes)
+  Si confiance >= 40 % → résultat spécifique retourné.
+
+Étape 2 — CLIP zero-shot universel (N'IMPORTE QUELLE plante) :
+  • openai/clip-vit-base-patch32
+  • 10 catégories de symptômes visuels
+  • Fonctionne sur rose, basilic, aloe vera, cactus, orchidée…
+  Si étape 1 insuffisante → CLIP prend le relais.
+
+Fallback — YOLOv8 : si aucun modèle HuggingFace disponible.
 """
 
 import os
@@ -359,18 +369,131 @@ CLASS_INFO = {
     },
 }
 
-# Seuil de confiance minimum pour considérer un résultat fiable
-CONFIDENCE_THRESHOLD = 0.35
+# Seuil de confiance pour le modèle spécifique PlantVillage
+CONFIDENCE_THRESHOLD     = 0.35
+# En dessous de ce seuil → on bascule sur CLIP universel
+CLIP_FALLBACK_THRESHOLD  = 0.40
 
 # ── Variables globales pour les modèles ───────────────────────────────────────
 _hf_classifier = None
-_local_model    = None
-_yolo_model     = None
-_use_local      = False
+_clip_model    = None
+_local_model   = None
+_yolo_model    = None
+_use_local     = False
 
-HF_MODEL_ID  = "dima806/plant_disease_image_detection"
+HF_MODEL_ID   = "dima806/plant_disease_image_detection"
+CLIP_MODEL_ID = "openai/clip-vit-base-patch32"
 LOCAL_PT_PATH = os.getenv('MODEL_PATH', 'model/plant_disease_efficientnet.pt')
 YOLO_PATH     = os.getenv('YOLO_MODEL_PATH', 'model/modele_plantes.pt')
+
+# ── Prompts CLIP — descriptions visuelles des 10 catégories de symptômes ──────
+# Écrits en anglais : CLIP a été entraîné principalement sur des textes anglais.
+CLIP_PROMPTS = {
+    "healthy":        "a completely healthy green plant leaf with no disease",
+    "powdery_mildew": "a plant leaf covered with white powdery mildew coating",
+    "rust":           "a plant leaf with orange brown rust spots or pustules",
+    "blight":         "a plant leaf with large brown necrotic blight lesions dying",
+    "leaf_spots":     "a plant leaf with multiple dark circular fungal spots or lesions",
+    "mosaic_virus":   "a plant leaf with yellow green mosaic pattern caused by virus",
+    "bacterial":      "a plant leaf with water soaked bacterial lesions and yellow halo",
+    "yellowing":      "a yellowing plant leaf with chlorosis due to nutrient deficiency",
+    "wilting":        "a wilting drooping plant with brown edges and dying leaves",
+    "pest_damage":    "a plant leaf with holes and damage caused by insects or spider mites",
+}
+
+# ── Informations FR pour chaque catégorie universelle CLIP ────────────────────
+UNIVERSAL_DISEASE_INFO = {
+    "healthy": {
+        "fr":          "Plante saine ✅",
+        "plante":      "Plante (espèce quelconque) 🌿",
+        "maladie":     None,
+        "niveau":      "healthy",
+        "description": "Aucun symptôme de maladie détecté. La plante semble en bonne santé.",
+        "traitement":  "Aucun traitement requis.",
+        "conseil":     "Continuez la surveillance régulière. Arrosage et fertilisation adaptés à l'espèce.",
+    },
+    "powdery_mildew": {
+        "fr":          "Oïdium (maladie fongique) 🍄",
+        "plante":      "Plante (espèce quelconque) 🌿",
+        "maladie":     "Oïdium",
+        "niveau":      "sick",
+        "description": "Revêtement blanc poudreux sur les feuilles — champignons Erysiphaceae.",
+        "traitement":  "Soufre mouillable ou bicarbonate de sodium dilué. Fongicide si généralisé.",
+        "conseil":     "Améliorer la ventilation. Éviter l'excès d'azote. Supprimer les parties atteintes.",
+    },
+    "rust": {
+        "fr":          "Rouille (maladie fongique) 🟠",
+        "plante":      "Plante (espèce quelconque) 🌿",
+        "maladie":     "Rouille",
+        "niveau":      "sick",
+        "description": "Pustules orange-rouille sur les feuilles — champignons Pucciniales.",
+        "traitement":  "Fongicide triazole (myclobutanil, tebuconazole). Retirer les feuilles atteintes.",
+        "conseil":     "Éviter l'humidité foliaire. Rotation des cultures. Variétés résistantes disponibles.",
+    },
+    "blight": {
+        "fr":          "Brûlure / Mildiou (critique) 🚨",
+        "plante":      "Plante (espèce quelconque) 🌿",
+        "maladie":     "Brûlure ou Mildiou",
+        "niveau":      "critical",
+        "description": "Grandes zones nécrotiques brunes — brûlure bactérienne ou mildiou agressif (Phytophthora).",
+        "traitement":  "TRAITEMENT URGENT : fongicide systémique (métalaxyl ou propiconazole). Isoler la plante.",
+        "conseil":     "Détruire les parties infectées. Ne pas composter. Surveiller la propagation.",
+    },
+    "leaf_spots": {
+        "fr":          "Taches foliaires fongiques 🔵",
+        "plante":      "Plante (espèce quelconque) 🌿",
+        "maladie":     "Taches foliaires",
+        "niveau":      "sick",
+        "description": "Taches circulaires sombres — Cercospora, Alternaria ou Septoria selon l'espèce.",
+        "traitement":  "Fongicide cuivre ou mancozèbe. Supprimer les feuilles infectées.",
+        "conseil":     "Éviter l'arrosage foliaire. Rotation des cultures recommandée.",
+    },
+    "mosaic_virus": {
+        "fr":          "Virus mosaïque (critique) ⚠️",
+        "plante":      "Plante (espèce quelconque) 🌿",
+        "maladie":     "Virus mosaïque",
+        "niveau":      "critical",
+        "description": "Mosaïque jaune-vert irrégulière — infection virale transmise par pucerons ou contact.",
+        "traitement":  "Aucun traitement curatif. Arracher et détruire les plants infectés immédiatement.",
+        "conseil":     "Contrôler les pucerons (vecteurs). Désinfecter les outils. Utiliser des plants certifiés.",
+    },
+    "bacterial": {
+        "fr":          "Infection bactérienne 🦠",
+        "plante":      "Plante (espèce quelconque) 🌿",
+        "maladie":     "Maladie bactérienne",
+        "niveau":      "sick",
+        "description": "Lésions aqueuses entourées d'un halo jaune — Xanthomonas ou Pseudomonas.",
+        "traitement":  "Bactéricide à base de cuivre. Éviter tout arrosage foliaire.",
+        "conseil":     "Rotation 2–3 ans. Désinfection des outils. Éviter les blessures mécaniques.",
+    },
+    "yellowing": {
+        "fr":          "Chlorose / Jaunissement 🟡",
+        "plante":      "Plante (espèce quelconque) 🌿",
+        "maladie":     "Chlorose",
+        "niveau":      "sick",
+        "description": "Jaunissement des feuilles — carence en fer, azote ou magnésium ; ou excès d'eau.",
+        "traitement":  "Apport de micronutriments (chélate de fer, engrais NPK foliaire).",
+        "conseil":     "Vérifier le pH du sol (idéal 6–7). Peut indiquer un excès d'eau ou une maladie racinaire.",
+    },
+    "wilting": {
+        "fr":          "Flétrissement / Dépérissement 🥀",
+        "plante":      "Plante (espèce quelconque) 🌿",
+        "maladie":     "Flétrissement",
+        "niveau":      "critical",
+        "description": "Flétrissement et nécrose des bords — Fusarium, Verticillium ou stress hydrique sévère.",
+        "traitement":  "Vérifier l'irrigation. Si fongique : thiophanate-méthyl ou iprodione.",
+        "conseil":     "Améliorer le drainage. Éviter la compaction du sol. Rotation des cultures.",
+    },
+    "pest_damage": {
+        "fr":          "Dommages par ravageurs 🐛",
+        "plante":      "Plante (espèce quelconque) 🌿",
+        "maladie":     "Attaque d'insectes ou acariens",
+        "niveau":      "sick",
+        "description": "Perforations ou décolorations — chenilles, pucerons, cochenilles ou acariens tétranyques.",
+        "traitement":  "Insecticide (pyréthrine naturelle). Savon insecticide ou acaricide (abamectine).",
+        "conseil":     "Surveiller le dessous des feuilles. Favoriser les prédateurs naturels (coccinelles).",
+    },
+}
 
 
 # ── Chargement du modèle HuggingFace ─────────────────────────────────────────
@@ -426,6 +549,28 @@ def _get_local_model():
         return None
 
 
+# ── Chargement CLIP universel ─────────────────────────────────────────────────
+def _get_clip():
+    global _clip_model
+    if _clip_model is not None:
+        return _clip_model
+    try:
+        import torch
+        from transformers import pipeline
+        device = 0 if torch.cuda.is_available() else -1
+        print(f"📥 Chargement CLIP universel : {CLIP_MODEL_ID}…")
+        _clip_model = pipeline(
+            "zero-shot-image-classification",
+            model=CLIP_MODEL_ID,
+            device=device,
+        )
+        print("✅ CLIP universel chargé — détection sur toute plante activée")
+        return _clip_model
+    except Exception as e:
+        print(f"⚠️  CLIP non disponible ({e})")
+        return None
+
+
 # ── Chargement YOLO (fallback) ────────────────────────────────────────────────
 def _get_yolo():
     global _yolo_model
@@ -446,32 +591,101 @@ def _get_yolo():
 # ── Inference principale ──────────────────────────────────────────────────────
 def run_inference(img_path):
     """
-    Point d'entrée principal.
-    Retourne un dict avec : label, confidence, all_predictions, disease_info
+    Pipeline en 2 étapes :
+    1. Modèle spécifique PlantVillage (EfficientNet local → HuggingFace ViT)
+       → Si confiance >= 40 % : résultat précis avec nom de maladie exact.
+    2. CLIP zero-shot universel (openai/clip-vit-base-patch32)
+       → Si étape 1 échoue ou confiance trop faible : détecte les symptômes
+         visuels sur N'IMPORTE QUELLE plante (rose, basilic, aloe vera…)
     """
     if not os.path.exists(img_path):
         raise FileNotFoundError(f"Image introuvable : {img_path}")
 
-    # 1. Modèle local EfficientNet (le plus rapide si disponible)
+    pv_result = None   # résultat PlantVillage (peut être basse confiance)
+
+    # ── Étape 1a : modèle local EfficientNet ─────────────────────────────────
     local = _get_local_model()
     if local is not None:
-        return _infer_local(img_path, local)
+        pv_result = _infer_local(img_path, local)
+        if pv_result['confidence'] >= CLIP_FALLBACK_THRESHOLD:
+            pv_result['method'] = 'efficientnet_local'
+            return pv_result
 
-    # 2. HuggingFace ViT (ne nécessite aucun entraînement local)
-    hf = _get_hf_classifier()
-    if hf is not None:
-        return _infer_hf(img_path, hf)
+    # ── Étape 1b : HuggingFace ViT PlantVillage ──────────────────────────────
+    if pv_result is None:
+        hf = _get_hf_classifier()
+        if hf is not None:
+            pv_result = _infer_hf(img_path, hf)
+            if pv_result['confidence'] >= CLIP_FALLBACK_THRESHOLD:
+                pv_result['method'] = 'huggingface_vit'
+                return pv_result
 
-    # 3. Fallback YOLO (modèle de détection d'objets)
+    # ── Étape 2 : CLIP universel (toute plante) ───────────────────────────────
+    clip = _get_clip()
+    if clip is not None:
+        clip_result = _infer_clip_universal(img_path, clip)
+        clip_result['method'] = 'clip_universal'
+        # Si PlantVillage avait quand même un résultat, l'inclure en méta-donnée
+        if pv_result:
+            clip_result['plantvillage_hint'] = {
+                'label':      pv_result.get('label'),
+                'confidence': pv_result.get('confidence'),
+            }
+        return clip_result
+
+    # ── Étape 3 : retourner PlantVillage même si basse confiance ─────────────
+    if pv_result is not None:
+        pv_result['method'] = 'huggingface_vit_low_conf'
+        return pv_result
+
+    # ── Fallback YOLO ─────────────────────────────────────────────────────────
     yolo = _get_yolo()
     if yolo is not None:
-        return _infer_yolo(img_path, yolo)
+        r = _infer_yolo(img_path, yolo)
+        r['method'] = 'yolo_fallback'
+        return r
 
     raise RuntimeError(
         "Aucun modèle disponible. "
-        "Lancez 'python train_model.py' pour entraîner le modèle local, "
-        "ou installez 'pip install transformers' pour le modèle HuggingFace."
+        "Installez 'pip install transformers' pour activer l'IA universelle."
     )
+
+
+# ── Inférence CLIP universelle (toute plante) ────────────────────────────────
+def _infer_clip_universal(img_path, clip_pipeline):
+    """
+    Utilise CLIP pour détecter les symptômes visuels sur n'importe quelle plante.
+    Retourne toujours un résultat — même pour l'aloe vera, le basilic, les roses…
+    """
+    img    = Image.open(img_path).convert("RGB")
+    labels = list(CLIP_PROMPTS.values())
+    keys   = list(CLIP_PROMPTS.keys())
+
+    results = clip_pipeline(img, candidate_labels=labels)
+
+    # Trier par score décroissant
+    results_sorted = sorted(results, key=lambda x: x['score'], reverse=True)
+
+    # Retrouver la clé de catégorie à partir du label
+    best_label = results_sorted[0]['label']
+    best_conf  = float(results_sorted[0]['score'])
+    best_key   = keys[labels.index(best_label)]
+
+    # Top-5 pour l'affichage
+    top5 = [
+        {'label': keys[labels.index(r['label'])], 'score': float(r['score'])}
+        for r in results_sorted[:5]
+    ]
+
+    info = UNIVERSAL_DISEASE_INFO.get(best_key, UNIVERSAL_DISEASE_INFO['healthy'])
+
+    return {
+        'label':           best_key,
+        'confidence':      round(best_conf, 4),
+        'all_predictions': top5,
+        'disease_info':    info,
+        'universal':       True,  # indique que le résultat vient de CLIP
+    }
 
 
 # ── Inférence HuggingFace ─────────────────────────────────────────────────────
