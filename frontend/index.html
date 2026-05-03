@@ -1637,35 +1637,29 @@
     .fa-body-g { transform-box: fill-box; transform-origin: 50% 100%; }
     .fa-eye-l  { transform-box: fill-box; transform-origin: 50%  50%; }
     .fa-eye-r  { transform-box: fill-box; transform-origin: 50%  50%; }
-    .fa-conf-g { transform-box: fill-box; transform-origin: 50%  50%; }
-
-    /* ── Expressions : masquage par défaut ── */
-    .fa-brow-w, .fa-brow-h   { display: none; }
-    .fa-m-sad, .fa-m-happy,
-    .fa-m-hmm, .fa-m-open    { display: none; }
-    .fa-tears, .fa-confetti  { display: none; }
-    .fa-sweat, .fa-q-mark    { display: none; }
+    /* ── Expressions : tout masqué par défaut ; activé par état ── */
+    .fa-brow-n, .fa-brow-w, .fa-brow-h { display: none; }
+    .fa-m-sad,  .fa-m-happy, .fa-m-hmm { display: none; }
+    .fa-tears,  .fa-confetti            { display: none; }
+    .fa-sweat,  .fa-q-mark              { display: none; }
 
     /* ═══ IDLE ═══ */
+    .farmer-idle .fa-brow-n { display: block; }
     .farmer-idle .fa-body-g { animation: fa-breathe 3s ease-in-out infinite; }
     .farmer-idle .fa-head-g { animation: fa-sway    4s ease-in-out infinite; }
 
     /* ═══ LOADING ═══ */
-    .farmer-loading .fa-brow-n     { display: none; }
-    .farmer-loading .fa-brow-w     { display: block; }
-    .farmer-loading .fa-m-smile    { display: none; }
-    .farmer-loading .fa-m-hmm      { display: block; }
-    .farmer-loading .fa-sweat      { display: block; }
-    .farmer-loading .fa-arm-l      { transform: rotate(20deg); }
-    .farmer-loading .fa-arm-r      { transform: rotate(-20deg); }
+    .farmer-loading .fa-brow-w      { display: block; }
+    .farmer-loading .fa-m-hmm       { display: block; }
+    .farmer-loading .fa-sweat       { display: block; }
+    .farmer-loading .fa-arm-l       { transform: rotate(20deg); }
+    .farmer-loading .fa-arm-r       { transform: rotate(-20deg); }
     .farmer-loading .fa-avatar-inner{ animation: fa-tremble .12s linear infinite; }
-    .farmer-loading .fa-eye-l      { animation: fa-fast-blink .45s ease-in-out infinite; }
-    .farmer-loading .fa-eye-r      { animation: fa-fast-blink .45s ease-in-out .06s infinite; }
+    .farmer-loading .fa-eye-l       { animation: fa-fast-blink .45s ease-in-out infinite; }
+    .farmer-loading .fa-eye-r       { animation: fa-fast-blink .45s ease-in-out .06s infinite; }
 
     /* ═══ HEALTHY ═══ */
-    .farmer-healthy .fa-brow-n     { display: none; }
     .farmer-healthy .fa-brow-h     { display: block; }
-    .farmer-healthy .fa-m-smile    { display: none; }
     .farmer-healthy .fa-m-happy    { display: block; }
     .farmer-healthy .fa-confetti   { display: block; }
     .farmer-healthy .fa-cheek      { opacity: .75 !important; }
@@ -1682,9 +1676,7 @@
     .farmer-healthy .fa-c8 { animation: fa-cf8 1s ease-out 0.35s infinite; }
 
     /* ═══ SICK ═══ */
-    .farmer-sick .fa-brow-n  { display: none; }
     .farmer-sick .fa-brow-w  { display: block; }
-    .farmer-sick .fa-m-smile { display: none; }
     .farmer-sick .fa-m-sad   { display: block; }
     .farmer-sick .fa-tears   { display: block; }
     .farmer-sick .fa-arm-l   { transform: rotate(-22deg); }
@@ -1696,9 +1688,7 @@
     .farmer-sick .fa-t4 { animation: fa-tear .9s ease-in 0.50s infinite; }
 
     /* ═══ CRITICAL ═══ */
-    .farmer-critical .fa-brow-n  { display: none; }
     .farmer-critical .fa-brow-w  { display: block; }
-    .farmer-critical .fa-m-smile { display: none; }
     .farmer-critical .fa-m-sad   { display: block; }
     .farmer-critical .fa-tears   { display: block; }
     .farmer-critical .fa-arm-l   { transform: rotate(-28deg); }
@@ -1711,7 +1701,7 @@
     .farmer-critical .fa-t4 { animation: fa-tear .65s ease-in 0.30s infinite; }
 
     /* ═══ UNKNOWN ═══ */
-    .farmer-unknown .fa-m-smile  { display: none; }
+    .farmer-unknown .fa-brow-n   { display: block; }
     .farmer-unknown .fa-m-hmm    { display: block; }
     .farmer-unknown .fa-q-mark   { display: block; }
     .farmer-unknown .fa-head-g   { animation: fa-head-tilt 2s ease-in-out infinite; }
@@ -2255,32 +2245,23 @@ function useTicker(result, connected) {
 /* ══════════════ SCROLL REVEAL (hook) ══════════════ */
 function useScrollReveal(page) {
   useEffect(function(){
-    // Reset all reveal elements first (page change)
-    document.querySelectorAll('.reveal').forEach(function(el){el.classList.remove('visible');});
+    var revealEls = document.querySelectorAll('.reveal');
+    if(revealEls.length) revealEls.forEach(function(el){el.classList.remove('visible');});
 
-    var activate = function(){
-      var els=document.querySelectorAll('.reveal');
-      if(!els.length)return;
+    var obs = null;
+    var t = setTimeout(function(){
+      var els = document.querySelectorAll('.reveal');
+      if(!els.length) return;
       if(!('IntersectionObserver' in window)){
-        els.forEach(function(el){el.classList.add('visible');});return;
+        els.forEach(function(el){el.classList.add('visible');}); return;
       }
-      var obs=new IntersectionObserver(function(entries){
-        entries.forEach(function(e){if(e.isIntersecting)e.target.classList.add('visible');});
-      },{threshold:0.01,rootMargin:'0px 0px 0px 0px'});
+      obs = new IntersectionObserver(function(entries){
+        entries.forEach(function(e){if(e.isIntersecting) e.target.classList.add('visible');});
+      },{threshold:0.01});
       els.forEach(function(el){obs.observe(el);});
-      // Fallback: immediately reveal elements already in viewport
-      setTimeout(function(){
-        els.forEach(function(el){
-          var r=el.getBoundingClientRect();
-          if(r.top < window.innerHeight && r.bottom > 0) el.classList.add('visible');
-        });
-      }, 80);
-      return obs;
-    };
+    }, 50);
 
-    // Short delay to let React render the new page DOM
-    var t = setTimeout(function(){ activate(); }, 50);
-    return function(){ clearTimeout(t); };
+    return function(){ clearTimeout(t); if(obs) obs.disconnect(); };
   },[page]);
 }
 

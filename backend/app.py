@@ -22,7 +22,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # ── Configuration ESP32 ────────────────────────────────────────────────────────
 ESP32_DEFAULT_IP      = os.getenv('ESP32_IP', '')
-ESP32_CONNECT_TIMEOUT = 3     # secondes pour le ping
+ESP32_CONNECT_TIMEOUT = 8     # secondes pour le ping
 ESP32_CAPTURE_TIMEOUT = 8     # secondes pour capturer une frame
 
 
