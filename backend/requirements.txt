@@ -16,3 +16,6 @@ accelerate>=0.24.0
 
 # Modèle fallback : YOLOv8
 ultralytics==8.2.80
+
+# Base de données
+pymongo>=4.5.0

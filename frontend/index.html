@@ -2906,6 +2906,7 @@ function App() {
   const {s:sensors, hist:sHist} = useSensors();
 
   // ── État ESP32-CAM ────────────────────────────────────────────────────────
+  const [histFilter,       setHistFilter]       = useState("all");
   const [esp32Ip,          setEsp32Ip]          = useState(()=>localStorage.getItem('esp32Ip')||'');
   const [esp32Connected,   setEsp32Connected]   = useState(false);
   const [esp32Checking,    setEsp32Checking]    = useState(false);
@@ -2917,6 +2918,27 @@ function App() {
 
   useEffect(()=>{ const id=setInterval(()=>setNow(new Date()),1000); return ()=>clearInterval(id); },[]);
   useEffect(()=>{ document.body.classList.toggle("dark", darkMode); },[darkMode]);
+
+  // ── Chargement de l'historique depuis MongoDB au démarrage ───────────────
+  useEffect(()=>{
+    const loadHistory = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/history`);
+        if (!res.ok) return;
+        const records = await res.json();
+        if (!Array.isArray(records) || records.length === 0) return;
+        setHistory(records.map(r => ({
+          ...r,
+          id:   r.id   || r._id || Date.now(),
+          dbId: r._id  || r.dbId || null,
+          date: new Date(r.date),
+        })));
+      } catch(e) {
+        console.warn('Historique MongoDB non disponible:', e.message);
+      }
+    };
+    loadHistory();
+  }, []);
 
   // ── Polling ESP32 — vérification toutes les 5 secondes ───────────────────
   useEffect(()=>{
@@ -2977,15 +2999,31 @@ function App() {
 
   /* ── Logique partagée post-analyse ── */
   const _handleAnalysisResult = (data, imgName, srcTag) => {
+    const now   = new Date();
+    const entry = { id: Date.now(), image: imgName, ...data, date: now, source: srcTag };
+
     setResult(data);
     setHistory(p=>{
-      const next=[{id:Date.now(),image:imgName,...data,date:new Date(),source:srcTag},...p];
+      const next=[entry,...p];
       if(next.length===1)  unlockAchievement('first_analysis',{icon:'🔬',title:'Première analyse !',desc:'1ère détection IA lancée.',xp:100});
       if(next.length===5)  unlockAchievement('five_analyses', {icon:'🏅',title:'5 analyses effectuées',desc:'Vous maîtrisez PlantAI !',xp:200});
       if(next.length===10) unlockAchievement('ten_analyses',  {icon:'⭐',title:'Analyste expert',desc:'10 analyses réalisées.',xp:500});
       if(next.length===50) unlockAchievement('fifty_analyses',{icon:'🏆',title:'Expert confirmé',desc:'50 analyses — impressionnant !',xp:1500});
       return next;
     });
+
+    // ── Persistance MongoDB (fire-and-forget) ──────────────────────────────
+    // Les analyses via /api/predict et /api/esp32/capture sont déjà auto-sauvegardées
+    // côté backend. On ne renvoie que les analyses mock (source="mock") pour garder
+    // une trace même hors connexion au modèle IA.
+    if (srcTag === 'mock' && !data.dbId) {
+      fetch(`${API_URL}/api/history`, {
+        method:  'POST',
+        headers: {'Content-Type':'application/json'},
+        body:    JSON.stringify({...entry, date: now.toISOString()}),
+      }).catch(()=>{});
+    }
+
     if (data.niveau==="critical") { setAlertModal(data); setAlertBar(data); }
     else if (data.niveau==="sick")    showToast(`⚠️ Plante infectée : ${data.maladie} (${data.score}%)`,"error");
     else if (data.niveau==="healthy") {
@@ -4011,47 +4049,81 @@ function App() {
       )}
 
       {/* ════ HISTORIQUE ════ */}
-      {page==="history" && (
-        <div className="chart-card">
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"4px"}}>
-            <div className="cc-title">🗂️ Historique des Analyses</div>
-            {total>0&&<button onClick={()=>setHistory([])} style={{padding:"5px 12px",background:"#fee2e2",color:"#dc2626",border:"1.5px solid #fecaca",borderRadius:"8px",fontSize:"0.72rem",cursor:"pointer",fontWeight:700}}>🗑 Vider</button>}
-          </div>
-          <div className="cc-sub">{total} analyse{total>1?"s":""} enregistrée{total>1?"s":""} — session courante</div>
-          {total===0
-            ?<div className="empty-box"><div className="e-icon">📭</div><p>Aucune analyse.<br/><span className="e-link" onClick={()=>setPage("analyse")}>→ Lancer une analyse</span></p></div>
-            :<div className="tbl-scroll"><table>
-              <thead><tr><th>#</th><th>Image</th><th>Maladie</th><th>Confiance</th><th>Statut</th><th>Date</th><th>Note</th></tr></thead>
-              <tbody>
-                {history.map((h,i)=>(
-                  <tr key={h.id}>
-                    <td style={{color:"var(--text3)",fontWeight:700}}>{total-i}</td>
-                    <td style={{color:"var(--text3)"}}>🖼 {h.image||"image.jpg"}
-                      {h.source==="api" && <span style={{marginLeft:"5px",fontSize:"0.6rem",background:"#dcfce7",color:"#16a34a",borderRadius:"4px",padding:"1px 5px",fontWeight:700}}>API</span>}
-                      {h.source==="mock" && <span style={{marginLeft:"5px",fontSize:"0.6rem",background:"#fef9c3",color:"#92400e",borderRadius:"4px",padding:"1px 5px",fontWeight:700}}>Démo</span>}
-                    </td>
-                    <td className="td-bold">{h.maladie}</td>
-                    <td>
-                      <span style={{color:bcolor(h.niveau),fontWeight:800}}>{h.score}%</span>
-                      <div style={{background:"#f1f5f9",borderRadius:"4px",height:"4px",marginTop:"4px",width:"72px",overflow:"hidden"}}>
-                        <div style={{width:`${h.score}%`,height:"100%",borderRadius:"4px",background:bcolor(h.niveau)}}/>
-                      </div>
-                    </td>
-                    <td><span className={`pill pill-${h.niveau}`}>{h.niveau==="healthy"?"Saine":h.niveau==="sick"?"Infectée":h.niveau==="unknown"?"❓ Non reconnue":"Critique"}</span></td>
-                    <td style={{color:"var(--text3)",fontSize:"0.72rem"}}>{fmtFull(h.date)}</td>
-                    <td>
-                      <button className={`btn-note ${h.note?"has-note":""}`} onClick={()=>openNote(h)}>
-                        {h.note ? "✏️ Voir" : "+ Note"}
-                      </button>
-                      {h.note && <div className="note-inline" title={h.note}>📝 {h.note}</div>}
-                    </td>
-                  </tr>
+      {page==="history" && (() => {
+        const histFiltered = histFilter==="all" ? history : history.filter(h=>h.niveau===histFilter);
+        const clearAll = async () => {
+          setHistory([]); setHistFilter("all");
+          try { await fetch(`${API_URL}/api/history`, {method:'DELETE'}); } catch(e){}
+        };
+        const filterBtns = [
+          {key:"all",      label:`Toutes (${history.length})`,                                              color:"#6366f1"},
+          {key:"healthy",  label:`✅ Saines (${history.filter(h=>h.niveau==="healthy").length})`,           color:"#16a34a"},
+          {key:"sick",     label:`⚠️ Infectées (${history.filter(h=>h.niveau==="sick").length})`,           color:"#f59e0b"},
+          {key:"critical", label:`🚨 Critiques (${history.filter(h=>h.niveau==="critical").length})`,       color:"#ef4444"},
+        ];
+        return (
+          <div className="chart-card">
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"4px"}}>
+              <div className="cc-title">🗂️ Historique des Analyses</div>
+              {total>0 && <button onClick={clearAll} style={{padding:"5px 12px",background:"#fee2e2",color:"#dc2626",border:"1.5px solid #fecaca",borderRadius:"8px",fontSize:"0.72rem",cursor:"pointer",fontWeight:700}}>🗑 Vider</button>}
+            </div>
+            <div className="cc-sub">{total} analyse{total>1?"s":""} enregistrée{total>1?"s":""} — persisté en base de données</div>
+
+            {/* ── Filtres ── */}
+            {total>0 && (
+              <div style={{display:"flex",gap:"6px",flexWrap:"wrap",margin:"10px 0 12px"}}>
+                {filterBtns.map(({key,label,color})=>(
+                  <button key={key} onClick={()=>setHistFilter(key)} style={{
+                    padding:"4px 11px",fontSize:"0.72rem",fontWeight:700,cursor:"pointer",
+                    borderRadius:"20px",border:`1.5px solid ${histFilter===key?color:"var(--border)"}`,
+                    background: histFilter===key ? color : "var(--card)",
+                    color:      histFilter===key ? "#fff" : "var(--text2)",
+                    transition:"all .15s",
+                  }}>{label}</button>
                 ))}
-              </tbody>
-            </table></div>
-          }
-        </div>
-      )}
+              </div>
+            )}
+
+            {total===0
+              ? <div className="empty-box"><div className="e-icon">📭</div><p>Aucune analyse.<br/><span className="e-link" onClick={()=>setPage("analyse")}>→ Lancer une analyse</span></p></div>
+              : histFiltered.length===0
+              ? <div className="empty-box"><div className="e-icon">🔍</div><p>Aucune analyse dans cette catégorie.</p></div>
+              : <div className="tbl-scroll"><table>
+                  <thead><tr><th>#</th><th>Image</th><th>Maladie</th><th>Confiance</th><th>Statut</th><th>Date</th><th>Note</th></tr></thead>
+                  <tbody>
+                    {histFiltered.map((h,i)=>(
+                      <tr key={h.id}>
+                        <td style={{color:"var(--text3)",fontWeight:700}}>{histFiltered.length-i}</td>
+                        <td style={{color:"var(--text3)"}}>🖼 {h.image||"image.jpg"}
+                          {h.source==="api"   && <span style={{marginLeft:"5px",fontSize:"0.6rem",background:"#dcfce7",color:"#16a34a",borderRadius:"4px",padding:"1px 5px",fontWeight:700}}>API</span>}
+                          {h.source==="esp32" && <span style={{marginLeft:"5px",fontSize:"0.6rem",background:"#dbeafe",color:"#1d4ed8",borderRadius:"4px",padding:"1px 5px",fontWeight:700}}>ESP32</span>}
+                          {h.source==="mock"  && <span style={{marginLeft:"5px",fontSize:"0.6rem",background:"#fef9c3",color:"#92400e",borderRadius:"4px",padding:"1px 5px",fontWeight:700}}>Démo</span>}
+                          {h.dbId && <span style={{marginLeft:"4px",fontSize:"0.55rem",background:"#f3e8ff",color:"#7c3aed",borderRadius:"4px",padding:"1px 4px",fontWeight:700}} title="Sauvegardé en base de données">💾</span>}
+                        </td>
+                        <td className="td-bold">{h.maladie}</td>
+                        <td>
+                          <span style={{color:bcolor(h.niveau),fontWeight:800}}>{h.score}%</span>
+                          <div style={{background:"#f1f5f9",borderRadius:"4px",height:"4px",marginTop:"4px",width:"72px",overflow:"hidden"}}>
+                            <div style={{width:`${h.score}%`,height:"100%",borderRadius:"4px",background:bcolor(h.niveau)}}/>
+                          </div>
+                        </td>
+                        <td><span className={`pill pill-${h.niveau}`}>{h.niveau==="healthy"?"✅ Saine":h.niveau==="sick"?"⚠️ Infectée":h.niveau==="unknown"?"❓ Non reconnue":"🚨 Critique"}</span></td>
+                        <td style={{color:"var(--text3)",fontSize:"0.72rem"}}>{fmtFull(h.date instanceof Date ? h.date : new Date(h.date))}</td>
+                        <td>
+                          <button className={`btn-note ${h.note?"has-note":""}`} onClick={()=>openNote(h)}>
+                            {h.note ? "✏️ Voir" : "+ Note"}
+                          </button>
+                          {h.note && <div className="note-inline" title={h.note}>📝 {h.note}</div>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            }
+          </div>
+        );
+      })()}
 
       {/* ════ STATISTIQUES ════ */}
       {page==="stats" && (()=>{
