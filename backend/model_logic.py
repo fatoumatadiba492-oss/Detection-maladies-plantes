@@ -386,6 +386,40 @@ CLIP_MODEL_ID = "openai/clip-vit-base-patch32"
 LOCAL_PT_PATH = os.getenv('MODEL_PATH', 'model/plant_disease_efficientnet.pt')
 YOLO_PATH     = os.getenv('YOLO_MODEL_PATH', 'model/modele_plantes.pt')
 
+# ── Prompts CLIP — vérification de l'espèce avant de faire confiance à PlantVillage
+# Le modèle PlantVillage ne connaît que ces 13 espèces. Sur une plante hors de cette
+# liste (aloe vera, succulente, cactus…), il reste overconfident (softmax) — ce garde-fou
+# évite de lui faire confiance dans ce cas et bascule vers le CLIP universel.
+KNOWN_SPECIES_PROMPTS = {
+    "Apple":      "a photo of an apple tree leaf",
+    "Blueberry":  "a photo of a blueberry plant leaf",
+    "Cherry":     "a photo of a cherry tree leaf",
+    "Corn":       "a photo of a corn or maize plant leaf",
+    "Grape":      "a photo of a grape vine leaf",
+    "Peach":      "a photo of a peach tree leaf",
+    "Pepper":     "a photo of a bell pepper plant leaf",
+    "Potato":     "a photo of a potato plant leaf",
+    "Raspberry":  "a photo of a raspberry plant leaf",
+    "Soybean":    "a photo of a soybean plant leaf",
+    "Squash":     "a photo of a squash plant leaf",
+    "Strawberry": "a photo of a strawberry plant leaf",
+    "Tomato":     "a photo of a tomato plant leaf",
+}
+UNKNOWN_SPECIES_PROMPT = (
+    "a photo of an unrelated plant such as aloe vera, succulent, cactus, "
+    "houseplant, herb or ornamental flower not grown as a fruit or vegetable crop"
+)
+
+
+def _is_known_species(img_path, clip_pipeline) -> bool:
+    """Vérifie via CLIP que la photo montre bien une des 13 espèces couvertes par PlantVillage."""
+    img = Image.open(img_path).convert("RGB")
+    candidate_labels = list(KNOWN_SPECIES_PROMPTS.values()) + [UNKNOWN_SPECIES_PROMPT]
+    results = clip_pipeline(img, candidate_labels=candidate_labels)
+    best = max(results, key=lambda x: x['score'])
+    return best['label'] != UNKNOWN_SPECIES_PROMPT
+
+
 # ── Prompts CLIP — descriptions visuelles des 10 catégories de symptômes ──────
 # Écrits en anglais : CLIP a été entraîné principalement sur des textes anglais.
 CLIP_PROMPTS = {
@@ -602,14 +636,16 @@ def run_inference(img_path):
         raise FileNotFoundError(f"Image introuvable : {img_path}")
 
     pv_result = None   # résultat PlantVillage (peut être basse confiance)
+    clip = _get_clip()  # chargé tôt : utilisé pour le garde-fou d'espèce ET le fallback universel
 
     # ── Étape 1a : modèle local EfficientNet ─────────────────────────────────
     local = _get_local_model()
     if local is not None:
         pv_result = _infer_local(img_path, local)
         if pv_result['confidence'] >= CLIP_FALLBACK_THRESHOLD:
-            pv_result['method'] = 'efficientnet_local'
-            return pv_result
+            if clip is None or _is_known_species(img_path, clip):
+                pv_result['method'] = 'efficientnet_local'
+                return pv_result
 
     # ── Étape 1b : HuggingFace ViT PlantVillage ──────────────────────────────
     if pv_result is None:
@@ -617,11 +653,11 @@ def run_inference(img_path):
         if hf is not None:
             pv_result = _infer_hf(img_path, hf)
             if pv_result['confidence'] >= CLIP_FALLBACK_THRESHOLD:
-                pv_result['method'] = 'huggingface_vit'
-                return pv_result
+                if clip is None or _is_known_species(img_path, clip):
+                    pv_result['method'] = 'huggingface_vit'
+                    return pv_result
 
     # ── Étape 2 : CLIP universel (toute plante) ───────────────────────────────
-    clip = _get_clip()
     if clip is not None:
         clip_result = _infer_clip_universal(img_path, clip)
         clip_result['method'] = 'clip_universal'
