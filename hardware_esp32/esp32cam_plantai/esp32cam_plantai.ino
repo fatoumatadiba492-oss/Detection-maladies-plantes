@@ -1,6 +1,6 @@
 // ============================================================
 //  PlantAI — ESP32-CAM Web Server
-//  Serveur HTTP complet : /capture, :81/stream, /status
+//  Serveur HTTP complet : /capture, :81/stream, /status, /sensors
 //  Compatible avec le backend PlantAI Flask
 //
 //  INSTALLATION :
@@ -8,17 +8,31 @@
 //  2. Espressif boards manager URL :
 //     https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
 //  3. Remplir WIFI_SSID et WIFI_PASS ci-dessous
-//  4. Flasher → Ouvrir le moniteur série 115200 → noter l'IP
-//  5. Entrer cette IP dans PlantAI → badge ESP32-CAM
+//  4. (Optionnel) Brancher DHT22 : DATA → GPIO 13, VCC → 3.3V, GND → GND
+//     Installer la lib "DHT sensor library" (Adafruit) dans Arduino IDE
+//     Si pas de DHT22, laisser USE_DHT à 0
+//  5. Flasher → Ouvrir le moniteur série 115200 → noter l'IP
+//  6. Entrer cette IP dans PlantAI → badge ESP32-CAM
 // ============================================================
 
 #include "esp_camera.h"
 #include "esp_http_server.h"
 #include <WiFi.h>
 
+// ── Capteur DHT22 — température + humidité ambiante ────────────────────────
+// Branchement : DATA → GPIO 13 | VCC → 3.3 V | GND → GND
+// Mettre USE_DHT 0 si aucun capteur DHT22 branché.
+#define USE_DHT 0
+#if USE_DHT
+#include <DHT.h>
+#define DHT_PIN  13
+#define DHT_TYPE DHT22
+DHT dht(DHT_PIN, DHT_TYPE);
+#endif
+
 // ── Configuration WiFi ──────────────────────────────────────
-#define WIFI_SSID  "ESTM-CAMPUS"
-#define WIFI_PASS  "Estm2017"
+#define WIFI_SSID  "fatima"
+#define WIFI_PASS  "passer123"
 
 // ── Pins caméra AI Thinker ESP32-CAM ───────────────────────
 #define PWDN_GPIO_NUM     32
@@ -128,6 +142,25 @@ static esp_err_t capture_handler(httpd_req_t* req) {
   return res;
 }
 
+// ── GET /sensors ─────────────────────────────────────────────
+// Retourne température et humidité (DHT22) + RSSI WiFi
+static esp_err_t sensors_handler(httpd_req_t* req) {
+  float t = -1.0f, h = -1.0f;
+#if USE_DHT
+  t = dht.readTemperature();
+  h = dht.readHumidity();
+  if (isnan(t)) t = -1.0f;
+  if (isnan(h)) h = -1.0f;
+#endif
+  char json[256];
+  snprintf(json, sizeof(json),
+    "{\"ok\":true,\"temp\":%.1f,\"humidity\":%.1f,\"rssi\":%d,\"dht_active\":%s}",
+    t, h, WiFi.RSSI(), USE_DHT ? "true" : "false");
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  return httpd_resp_send(req, json, strlen(json));
+}
+
 // ── GET /status ──────────────────────────────────────────────
 static esp_err_t status_handler(httpd_req_t* req) {
   String ip = WiFi.localIP().toString();
@@ -165,6 +198,7 @@ void startServers() {
     { "/",        HTTP_GET, index_handler,   NULL },
     { "/capture", HTTP_GET, capture_handler, NULL },
     { "/status",  HTTP_GET, status_handler,  NULL },
+    { "/sensors", HTTP_GET, sensors_handler, NULL },
   };
   if (httpd_start(&camera_httpd, &cfg) == ESP_OK)
     for (auto& u : uris) httpd_register_uri_handler(camera_httpd, &u);
@@ -184,6 +218,10 @@ void setup() {
   digitalWrite(LED_PIN, LOW);
 
   Serial.println("\n=== PlantAI ESP32-CAM ===");
+#if USE_DHT
+  dht.begin();
+  Serial.println("Capteur DHT22 initialise (GPIO 13)");
+#endif
   if (!initCamera()) {
     Serial.println("ERREUR camera ! Redemarrage...");
     delay(3000); ESP.restart();

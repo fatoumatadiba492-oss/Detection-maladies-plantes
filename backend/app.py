@@ -1,7 +1,11 @@
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 import os
+import sys
 import requests as http_requests
+
+if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8")
 import tempfile
 from werkzeug.utils import secure_filename
 from model_logic import run_inference
@@ -195,7 +199,28 @@ def esp32_status():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# ── ESP32-CAM : CAPTURER ET ANALYSER ──────────────────────────────────────────
+# ── ESP32 : DONNÉES CAPTEURS IoT (DHT22 temp/humidité) ────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+@app.route('/api/esp32/sensors', methods=['GET'])
+def esp32_sensors():
+    ip = request.args.get('ip', ESP32_DEFAULT_IP).strip()
+    if not ip:
+        return jsonify({'ok': False, 'error': 'Adresse IP ESP32 non fournie'}), 400
+    try:
+        r = http_requests.get(f'http://{ip}/sensors', timeout=5)
+        r.raise_for_status()
+        data = r.json()
+        return jsonify(data)
+    except http_requests.exceptions.ConnectTimeout:
+        return jsonify({'ok': False, 'error': 'Timeout — ESP32 injoignable'}), 504
+    except http_requests.exceptions.ConnectionError:
+        return jsonify({'ok': False, 'error': 'Connexion refusée'}), 503
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ── ESP32-CAM : CAPTURER ET ANALYSER ──────────────────────────────────════════
 # ══════════════════════════════════════════════════════════════════════════════
 @app.route('/api/esp32/capture', methods=['POST'])
 def esp32_capture():

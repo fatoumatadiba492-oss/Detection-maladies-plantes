@@ -890,6 +890,46 @@
     body.dark .login-logo-text h1 { color: var(--text); }
     body.dark .login-sub, body.dark .login-title { color: var(--text); }
 
+    /* ══════════ PAGE MALADIES ══════════ */
+    .mal-intro { background: linear-gradient(135deg,#16a34a,#1db954); color:#fff; border-radius: 16px; padding: 28px 32px; margin-bottom: 20px; }
+    .mal-intro h2 { font-size: 1.4rem; font-weight: 800; margin: 0 0 6px; }
+    .mal-intro p { opacity: .88; font-size: 0.9rem; margin: 0; }
+    .mal-stats-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .mal-stat { flex: 1; min-width: 120px; background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; text-align: center; }
+    .mal-stat .ms-val { font-size: 1.8rem; font-weight: 900; color: var(--green); }
+    .mal-stat .ms-lbl { font-size: 0.72rem; color: var(--text3); margin-top: 2px; }
+    .mal-culture { background: var(--white); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 14px; overflow: hidden; }
+    .mal-culture-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
+    .mal-culture-head:hover { background: var(--bg); }
+    .mal-culture-icon { font-size: 1.3rem; }
+    .mal-culture-name { font-weight: 700; font-size: 0.95rem; flex: 1; }
+    .mal-culture-count { font-size: 0.75rem; background: var(--green-pale); color: var(--green-dark); border-radius: 20px; padding: 2px 10px; font-weight: 600; }
+    .mal-culture-chevron { color: var(--text3); transition: transform .2s; font-size: 0.8rem; }
+    .mal-culture-chevron.open { transform: rotate(90deg); }
+    .mal-disease-list { padding: 0 18px 14px; }
+    .mal-disease-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .mal-disease-row:last-child { border-bottom: none; }
+    .mal-niveau-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+    .mal-niveau-dot.healthy  { background: #1db954; }
+    .mal-niveau-dot.sick     { background: #f59e0b; }
+    .mal-niveau-dot.critical { background: #ef4444; }
+    .mal-disease-info { flex: 1; }
+    .mal-disease-name { font-weight: 700; font-size: 0.85rem; }
+    .mal-disease-desc { font-size: 0.75rem; color: var(--text2); margin-top: 2px; line-height: 1.45; }
+    .mal-treatment { font-size: 0.75rem; background: #fef9c3; border-left: 3px solid #f59e0b; padding: 5px 10px; border-radius: 0 6px 6px 0; margin-top: 6px; color: #78350f; }
+    .mal-treatment.critical { background: #fee2e2; border-color: #ef4444; color: #7f1d1d; }
+    .mal-treatment.healthy  { background: #dcfce7; border-color: #1db954; color: #14532d; }
+    .mal-legend { display: flex; gap: 18px; margin-bottom: 16px; flex-wrap: wrap; }
+    .mal-legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--text2); }
+    .sensor-iot-badge { display:inline-flex; align-items:center; gap:5px; background:var(--green-pale); color:var(--green-dark); border:1px solid #a7f3c3; border-radius:20px; padding:3px 10px; font-size:0.73rem; font-weight:700; }
+    .sensor-real-indicator { position:absolute; top:8px; right:10px; font-size:0.65rem; background:#16a34a; color:#fff; border-radius:10px; padding:2px 7px; font-weight:700; }
+    body.dark .mal-culture    { background: #13161f; border-color: var(--border); }
+    body.dark .mal-stat       { background: #13161f; border-color: var(--border); }
+    body.dark .mal-treatment  { background: #2a2010; color: #fbbf24; }
+    body.dark .mal-treatment.critical { background: #2d0a0a; color: #fca5a5; }
+    body.dark .mal-treatment.healthy  { background: #0d2e1a; color: #6ee7a0; }
+    body.dark .mal-culture-head:hover { background: #1a1d27; }
+
     /* ══════════ STATISTIQUES ══════════ */
     .stats-kpi-row {
       display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 20px;
@@ -2003,7 +2043,7 @@ const fmtFull = d => d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"
 const fmtTime = d => d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
 const today   = () => new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
 
-/* ── Sensor simulation ── */
+/* ── Sensor simulation (base) ── */
 function useSensors() {
   const init = {temp:24.3,humidity:62,soil:65,light:74};
   const [s, setS] = useState(init);
@@ -2028,6 +2068,76 @@ function useSensors() {
   },[s]);
   return {s, hist};
 }
+
+/* ── Maladies détectables — données pour la page référence ── */
+const DISEASE_DB = [
+  { culture:"Tomate 🍅", maladies:[
+    { nom:"Tache bactérienne", niveau:"sick",     desc:"Xanthomonas spp. Taches aqueuses entourées d'un halo jaune.",     traitement:"Cuivre + mancozèbe dès les premiers symptômes." },
+    { nom:"Alternariose",      niveau:"sick",     desc:"Alternaria solani. Taches brunes concentriques en cible.",          traitement:"Chlorothalonil ou azoxystrobine. Feuilles basses à supprimer." },
+    { nom:"Mildiou",           niveau:"critical", desc:"Phytophthora infestans. Taches huileuses, duvet blanc. Contagieux.",traitement:"URGENCE : métalaxyl + cuivre. Arracher plants très atteints." },
+    { nom:"Moisissure (Cladosporiose)", niveau:"sick", desc:"Passalora fulva. Face sup. jaune, face inf. veloutée olive.",  traitement:"Mancozèbe ou chlorothalonil. Améliorer la ventilation." },
+    { nom:"Septoriose",        niveau:"sick",     desc:"Septoria lycopersici. Petites taches rondes avec centre pâle.",     traitement:"Chlorothalonil + éliminer feuilles infectées." },
+    { nom:"Acariens (Tétranyques)", niveau:"sick",desc:"Tetranychus urticae. Feuilles bronzées, toiles fines en dessous.", traitement:"Acaricide. Augmenter l'humidité ambiante." },
+    { nom:"Tache cible",       niveau:"sick",     desc:"Corynespora cassiicola. Anneaux concentriques brun-noirs.",         traitement:"Rotation cultures. Fongicide préventif (azoxystrobine)." },
+    { nom:"Virus jaunissement (TYLCV)", niveau:"critical", desc:"Maladie virale grave. Jaunissement et enroulement des feuilles.", traitement:"Aucun traitement curatif. Arracher et détruire les plants." },
+    { nom:"Virus mosaïque",    niveau:"critical", desc:"Virus de la mosaïque du tabac. Marbré vert-jaune.",                traitement:"Éliminer les plants infectés. Désinfecter les outils." },
+    { nom:"Saine",             niveau:"healthy",  desc:"Aucune anomalie détectée.",                                         traitement:"Maintenir arrosage régulier et fertilisation NPK." },
+  ]},
+  { culture:"Pomme 🍎", maladies:[
+    { nom:"Tavelure",          niveau:"sick",     desc:"Venturia inaequalis. Taches olivâtres puis brun-noir sur feuilles.", traitement:"Fongicide cuivre ou captane dès le débourrement." },
+    { nom:"Pourriture noire",  niveau:"critical", desc:"Botryosphaeria obtusa. Anneaux concentriques noirs sur fruits.",    traitement:"Excision des parties atteintes. Fongicide systémique." },
+    { nom:"Rouille cédrière",  niveau:"sick",     desc:"Gymnosporangium. Taches orange vif sur face supérieure.",           traitement:"Myclobutanil au stade bouton rose. 2-3 traitements." },
+    { nom:"Saine",             niveau:"healthy",  desc:"Aucune anomalie détectée.",                                         traitement:"Irrigation régulière. Fertilisation NPK équilibrée." },
+  ]},
+  { culture:"Pomme de terre 🥔", maladies:[
+    { nom:"Alternariose (mildiou précoce)", niveau:"sick", desc:"Alternaria solani. Taches brunes concentriques sur feuilles âgées.", traitement:"Chlorothalonil ou mancozèbe dès fermeture du couvert." },
+    { nom:"Mildiou",           niveau:"critical", desc:"Phytophthora infestans. Taches huileuses brun-violet. Fulgurante.", traitement:"URGENCE : métalaxyl + mancozèbe. Récolte rapide." },
+    { nom:"Saine",             niveau:"healthy",  desc:"Aucune anomalie détectée.",                                         traitement:"Buttage régulier. Irrigation goutte-à-goutte." },
+  ]},
+  { culture:"Maïs 🌽", maladies:[
+    { nom:"Cercosporiose (Tache grise)", niveau:"sick", desc:"Cercospora zeae-maydis. Lésions rectangulaires gris-brun.",   traitement:"Triazole + strobilurine au stade 9-11 feuilles." },
+    { nom:"Rouille commune",   niveau:"sick",     desc:"Puccinia sorghi. Pustules brun-rouille ovales sur les deux faces.", traitement:"Fongicide triazole si pression forte avant floraison." },
+    { nom:"Helminthosporiose du Nord", niveau:"sick", desc:"Exserohilum turcicum. Grandes taches en forme de cigare.",      traitement:"Propiconazole ou azoxystrobine + propiconazole." },
+    { nom:"Sain",              niveau:"healthy",  desc:"Aucune anomalie détectée.",                                         traitement:"Fertilisation azotée fractionnée." },
+  ]},
+  { culture:"Vigne 🍇", maladies:[
+    { nom:"Pourriture noire",  niveau:"critical", desc:"Guignardia bidwellii. Taches circulaires + baies momifiées.",       traitement:"Mancozèbe ou cuivre en préventif avant floraison." },
+    { nom:"Esca (Rougeot)",    niveau:"critical", desc:"Complexe fongique du bois. Tigré foliaire, apoplexie foudroyante.", traitement:"Aucun curatif. Protection plaies de taille avec mastic." },
+    { nom:"Brûlure des feuilles", niveau:"sick",  desc:"Pseudocercospora vitis. Taches angulaires brun-rougeâtre.",         traitement:"Cuivre + fongicide de contact. Éviter humidité stagnante." },
+    { nom:"Saine",             niveau:"healthy",  desc:"Aucune anomalie détectée.",                                         traitement:"Surveillance mildiou/oïdium. Taille hivernale rigoureuse." },
+  ]},
+  { culture:"Pêche 🍑", maladies:[
+    { nom:"Tache bactérienne", niveau:"sick",     desc:"Xanthomonas arboricola. Petites taches aqueuses angulaires.",       traitement:"Oxychlorure de cuivre en préventif. Éviter aspersion." },
+    { nom:"Saine",             niveau:"healthy",  desc:"Aucune anomalie détectée.",                                         traitement:"Éclaircissage des fruits. Protection contre la cloque." },
+  ]},
+  { culture:"Poivron 🫑", maladies:[
+    { nom:"Tache bactérienne", niveau:"sick",     desc:"Xanthomonas campestris. Lésions aqueuses à halo jaune puis nécrotiques.", traitement:"Cuivre + mancozèbe préventif. Kasugamycine si sévère." },
+    { nom:"Sain",              niveau:"healthy",  desc:"Aucune anomalie détectée.",                                         traitement:"Tuteurage recommandé. Température optimale 18-30°C." },
+  ]},
+  { culture:"Orange 🍊", maladies:[
+    { nom:"Huanglongbing (HLB)", niveau:"critical", desc:"Candidatus Liberibacter. Mosaïque jaune-vert, fruits amers. INCURABLE.", traitement:"QUARANTAINE. Arrachage et destruction immédiate." },
+  ]},
+  { culture:"Cerise 🍒", maladies:[
+    { nom:"Oïdium",            niveau:"sick",     desc:"Podosphaera clandestina. Feutrage blanc poudreux sur jeunes pousses.", traitement:"Soufre mouillable ou bicarbonate. Aérer le feuillage." },
+    { nom:"Saine",             niveau:"healthy",  desc:"Aucune anomalie détectée.",                                         traitement:"Taille après récolte. Protection filet anti-oiseaux." },
+  ]},
+  { culture:"Courge 🎃", maladies:[
+    { nom:"Oïdium",            niveau:"sick",     desc:"Podosphaera xanthii. Poudre blanche farineuse sur face supérieure.", traitement:"Soufre mouillable ou bicarbonate dilué. Aérer." },
+  ]},
+  { culture:"Fraise 🍓", maladies:[
+    { nom:"Brûlure des feuilles", niveau:"sick",  desc:"Diplocarpon earlianum. Petites taches pourpres sur feuilles.",      traitement:"Captane ou myclobutanil. Éliminer les feuilles infectées." },
+    { nom:"Saine",             niveau:"healthy",  desc:"Aucune anomalie détectée.",                                         traitement:"Paillis conseillé. Renouveler plants tous les 3-4 ans." },
+  ]},
+  { culture:"Myrtille 🫐", maladies:[
+    { nom:"Saine",             niveau:"healthy",  desc:"Aucune anomalie détectée.",                                         traitement:"Maintenir pH acide 4.5-5.5. Paillis de copeaux." },
+  ]},
+  { culture:"Framboise 🫐", maladies:[
+    { nom:"Saine",             niveau:"healthy",  desc:"Aucune anomalie détectée.",                                         traitement:"Tailler cannes fruitées après récolte. Paillage." },
+  ]},
+  { culture:"Soja 🌱", maladies:[
+    { nom:"Sain",              niveau:"healthy",  desc:"Aucune anomalie détectée.",                                         traitement:"Inoculation rhizobium recommandée." },
+  ]},
+];
 
 /* ── TiltCard — effet 3D au survol ── */
 function TiltCard({ children, className, style, maxTilt }) {
@@ -3215,7 +3325,7 @@ function App() {
   const [dragOver,setDragOver]   = useState(false);
   const [now,setNow]             = useState(new Date());
   const fileRef = useRef();
-  const {s:sensors, hist:sHist} = useSensors();
+  const {s:simSensors, hist:sHist} = useSensors();
 
   // ── État ESP32-CAM ────────────────────────────────────────────────────────
   const [histFilter,       setHistFilter]       = useState("all");
@@ -3227,6 +3337,32 @@ function App() {
   const [esp32IpDraft,     setEsp32IpDraft]     = useState('');
   const [esp32TestMsg,     setEsp32TestMsg]     = useState(null);  // {ok,msg}
   const [esp32Testing,     setEsp32Testing]     = useState(false);
+
+  // ── Capteurs IoT réels (ESP32 DHT22) — remplace la simulation si connecté ─
+  const [realSensors,  setRealSensors]  = useState(null);
+  const [sensorsReal,  setSensorsReal]  = useState(false); // true = données réelles
+  useEffect(()=>{
+    if (!esp32Connected || !esp32Ip) { setRealSensors(null); setSensorsReal(false); return; }
+    const pull = () =>
+      fetch(`${API_URL}/api/esp32/sensors?ip=${encodeURIComponent(esp32Ip)}`)
+        .then(r=>r.ok?r.json():null)
+        .then(d=>{
+          if (d && d.ok && d.temp !== -1) {
+            setRealSensors(p=>({
+              temp:     typeof d.temp     === 'number' ? +d.temp.toFixed(1)     : (p?.temp     ?? simSensors.temp),
+              humidity: typeof d.humidity === 'number' ? Math.round(d.humidity) : (p?.humidity ?? simSensors.humidity),
+              soil:  p?.soil  ?? simSensors.soil,
+              light: p?.light ?? simSensors.light,
+            }));
+            setSensorsReal(true);
+          }
+        })
+        .catch(()=>{});
+    pull();
+    const id = setInterval(pull, 10000);
+    return ()=>clearInterval(id);
+  },[esp32Connected, esp32Ip]);
+  const sensors = realSensors || simSensors;
 
   useEffect(()=>{ const id=setInterval(()=>setNow(new Date()),1000); return ()=>clearInterval(id); },[]);
   useEffect(()=>{ document.body.classList.toggle("dark", darkMode); },[darkMode]);
@@ -3402,7 +3538,7 @@ function App() {
           : `Analysé · Confiance : ${result.score}%`)
       : "Soumettez une image pour démarrer";
 
-  const TABS = [{id:"dashboard",label:"📊 Dashboard"},{id:"analyse",label:"🔍 Analyser"},{id:"history",label:"🗂️ Historique"},{id:"stats",label:"📈 Statistiques"}];
+  const TABS = [{id:"dashboard",label:"📊 Dashboard"},{id:"analyse",label:"🔍 Analyser"},{id:"history",label:"🗂️ Historique"},{id:"stats",label:"📈 Statistiques"},{id:"maladies",label:"🦠 Maladies"}];
 
   /* ── Mobile menu ── */
   const [menuOpen, setMenuOpen] = useState(false);
@@ -4010,14 +4146,14 @@ function App() {
               <div className="hb-label">🌡️ TEMPÉRATURE</div>
               <div className="hb-value"><AnimatedNumber value={sensors.temp} suffix="°C" decimals={1}/></div>
               <div className="hb-sub">{sensors.temp<18?"Trop froid":sensors.temp>32?"Trop chaud":"Température idéale"}</div>
-              <div className="hb-pill">📡 ESP32</div>
+              <div className="hb-pill">{sensorsReal?"📡 ESP32 LIVE":"📡 ESP32 (sim)"}</div>
             </TiltCard>
             <TiltCard className="hero-banner" style={{background:"linear-gradient(135deg,#8b5cf6,#6d28d9)",boxShadow:"0 8px 32px rgba(139,92,246,0.22)"}}>
               <div className="hb-bg-circle c1"/><div className="hb-bg-circle c2"/>
               <div className="hb-label">💧 HUMIDITÉ AIR</div>
               <div className="hb-value"><AnimatedNumber value={sensors.humidity} suffix="%" decimals={0}/></div>
               <div className="hb-sub">{sensors.humidity<40?"Air sec":sensors.humidity>80?"Trop humide":"Humidité correcte"}</div>
-              <div className="hb-pill">🌫️ Capteur DHT22</div>
+              <div className="hb-pill">{sensorsReal?"🌫️ DHT22 LIVE":"🌫️ DHT22 (sim)"}</div>
             </TiltCard>
             <TiltCard className="hero-banner" style={{background:"linear-gradient(135deg,#eab308,#a16207)",boxShadow:"0 8px 32px rgba(234,179,8,0.22)"}}>
               <div className="hb-bg-circle c1"/><div className="hb-bg-circle c2"/>
@@ -4633,6 +4769,64 @@ function App() {
                 Confiance moy. IA : <strong style={{color:"var(--green)"}}>{avgConf2}%</strong>
                 {lastAnalysis && <span> · Dernier : <strong style={{color:"var(--text)"}}>{lastAnalysis.maladie}</strong></span>}
               </div>
+            </div>
+          </div>
+        </>);
+      })()}
+
+      {/* ════ PAGE MALADIES ════ */}
+      {page==="maladies" && (()=>{
+        const totalMal = DISEASE_DB.reduce((s,c)=>s+c.maladies.filter(m=>m.niveau!=="healthy").length,0);
+        const totalCultures = DISEASE_DB.length;
+        const totalClasses  = DISEASE_DB.reduce((s,c)=>s+c.maladies.length,0);
+        const [open, setOpen] = React.useState({});
+        const toggle = k => setOpen(p=>({...p,[k]:!p[k]}));
+        return (<>
+          <div className="mal-intro">
+            <h2>🦠 Maladies détectables par PlantAI</h2>
+            <p>Base de données PlantVillage · 38 classes · 13 cultures agricoles — détection par vision artificielle (ViT + CLIP)</p>
+          </div>
+          <div className="mal-stats-row">
+            <div className="mal-stat"><div className="ms-val">{totalCultures}</div><div className="ms-lbl">Cultures</div></div>
+            <div className="mal-stat"><div className="ms-val">{totalMal}</div><div className="ms-lbl">Maladies identifiées</div></div>
+            <div className="mal-stat"><div className="ms-val">{totalClasses}</div><div className="ms-lbl">Classes totales</div></div>
+            <div className="mal-stat"><div className="ms-val">∞</div><div className="ms-lbl">Autres plantes (CLIP)</div></div>
+          </div>
+          <div className="mal-legend">
+            <span className="mal-legend-item"><span className="mal-niveau-dot healthy"/><b>Saine</b></span>
+            <span className="mal-legend-item"><span className="mal-niveau-dot sick"/><b>Malade (traitement possible)</b></span>
+            <span className="mal-legend-item"><span className="mal-niveau-dot critical"/><b>Critique (action urgente)</b></span>
+          </div>
+          {DISEASE_DB.map((cat,ci)=>(
+            <div className="mal-culture" key={ci}>
+              <div className="mal-culture-head" onClick={()=>toggle(ci)}>
+                <span className="mal-culture-icon">{cat.culture.match(/\p{Emoji}/u)?.[0]||"🌿"}</span>
+                <span className="mal-culture-name">{cat.culture.replace(/\p{Emoji}/gu,"").trim()}</span>
+                <span className="mal-culture-count">{cat.maladies.length} classe{cat.maladies.length>1?"s":""}</span>
+                <span className={`mal-culture-chevron ${open[ci]?"open":""}`}>▶</span>
+              </div>
+              {open[ci] && (
+                <div className="mal-disease-list">
+                  {cat.maladies.map((m,mi)=>(
+                    <div className="mal-disease-row" key={mi}>
+                      <span className={`mal-niveau-dot ${m.niveau}`}/>
+                      <div className="mal-disease-info">
+                        <div className="mal-disease-name">{m.nom}</div>
+                        <div className="mal-disease-desc">{m.desc}</div>
+                        <div className={`mal-treatment ${m.niveau}`}>💊 {m.traitement}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+          <div style={{background:"linear-gradient(135deg,#3b82f6,#1d4ed8)",borderRadius:14,padding:"20px 24px",marginTop:8,color:"#fff"}}>
+            <div style={{fontWeight:800,fontSize:"1rem",marginBottom:6}}>🤖 + CLIP universel — toute plante</div>
+            <div style={{fontSize:"0.84rem",opacity:.9,lineHeight:1.6}}>
+              Pour les espèces hors PlantVillage (aloe vera, basilic, orchidée, cactus…),
+              PlantAI utilise <strong>CLIP zero-shot</strong> de OpenAI — capable de détecter les symptômes visuels
+              (flétrissement, taches, brûlures, décoloration) sur n'importe quelle plante sans entraînement spécifique.
             </div>
           </div>
         </>);
