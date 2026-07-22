@@ -101,6 +101,7 @@ def home():
         'message':   'PlantAI Backend opérationnel',
         'endpoints': {
             '/api/predict':         'POST  — Analyser une image (fichier)',
+            '/api/predict/cnn':     'POST  — Analyser une image via le CNN Keras (ia/model.py)',
             '/api/esp32/status':    'GET   — Vérifier la connexion ESP32-CAM',
             '/api/esp32/capture':   'POST  — Capturer depuis ESP32-CAM et analyser',
             '/api/esp32/stream_url':'GET   — URL du flux MJPEG ESP32',
@@ -153,6 +154,67 @@ def predict():
 
     except Exception as e:
         print(f"Erreur prédiction : {e}")
+        return jsonify({'error': "Erreur interne lors du traitement de l'image"}), 500
+
+    finally:
+        if img_path and os.path.exists(img_path):
+            try:
+                os.remove(img_path)
+            except OSError:
+                pass
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ── PRÉDICTION VIA LE CNN KERAS (ia/model.py) ─────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+def _predict_cnn(img_path):
+    """Import paresseux du modèle Keras : ne bloque pas le démarrage de Flask
+    si TensorFlow n'est pas installé dans l'environnement backend."""
+    ia_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'ia')
+    if ia_dir not in sys.path:
+        sys.path.insert(0, ia_dir)
+    from model import predict_image
+    return predict_image(img_path)
+
+
+@app.route('/api/predict/cnn', methods=['POST'])
+def predict_cnn():
+    img_path = None
+    try:
+        if 'image' not in request.files:
+            return jsonify({'error': 'Aucune image fournie'}), 400
+
+        file = request.files['image']
+        if file.filename == '':
+            return jsonify({'error': 'Nom de fichier vide'}), 400
+        if not allowed_file(file.filename):
+            return jsonify({'error': 'Format non autorisé. Acceptés : png, jpg, jpeg, gif, webp'}), 400
+
+        filename = secure_filename(file.filename)
+        img_path = os.path.join(UPLOAD_FOLDER, filename)
+        file.save(img_path)
+
+        result = _predict_cnn(img_path)
+
+        # ── Auto-sauvegarde MongoDB ──────────────────────────────────────────
+        entry = {
+            **result,
+            'image':  filename,
+            'source': 'cnn_keras',
+            'date':   datetime.now(timezone.utc),
+        }
+        db_id = _save_prediction(entry)
+        if db_id:
+            result['dbId'] = db_id
+
+        return jsonify(result)
+
+    except ModuleNotFoundError:
+        return jsonify({'error': "Modèle CNN indisponible — installez ia/requirements.txt (tensorflow)"}), 503
+    except FileNotFoundError as e:
+        return jsonify({'error': str(e)}), 503
+    except Exception as e:
+        print(f"Erreur prédiction CNN : {e}")
         return jsonify({'error': "Erreur interne lors du traitement de l'image"}), 500
 
     finally:
@@ -383,7 +445,7 @@ def clear_history():
 # ══════════════════════════════════════════════════════════════════════════════
 @app.errorhandler(404)
 def not_found(_):
-    return jsonify({'error': 'Route introuvable', 'endpoints': ['/', '/health', '/api/predict', '/api/esp32/status', '/api/esp32/capture', '/api/history']}), 404
+    return jsonify({'error': 'Route introuvable', 'endpoints': ['/', '/health', '/api/predict', '/api/predict/cnn', '/api/esp32/status', '/api/esp32/capture', '/api/history']}), 404
 
 @app.errorhandler(413)
 def too_large(_):
