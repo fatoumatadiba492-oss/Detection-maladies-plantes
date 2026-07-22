@@ -1,0 +1,4 @@
+-r requirements.txt
+
+# Test uniquement — MongoDB en mémoire pour test_priorities.py
+mongomock>=5.0.0

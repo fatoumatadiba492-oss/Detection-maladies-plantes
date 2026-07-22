@@ -19,3 +19,7 @@ ultralytics==8.2.80
 
 # Base de données
 pymongo>=4.5.0
+
+# Authentification
+bcrypt>=4.1.0
+PyJWT>=2.8.0

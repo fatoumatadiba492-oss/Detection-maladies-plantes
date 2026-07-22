@@ -2944,16 +2944,21 @@ function LoginPage({ onLogin /* onLogin(email) */ }) {
     const err = validate();
     if (err) { setError(err); return; }
     setError(""); setLoading(true);
-    // Simulation délai réseau sans async/await (compatible Babel standalone)
-    setTimeout(() => {
-      if (password.trim() === DEMO_PASSWORD) {
+    fetch(`${API_URL}/auth/login`, {
+      method:  "POST",
+      headers: {"Content-Type": "application/json"},
+      body:    JSON.stringify({email: email.trim(), motDePasse: password}),
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Identifiants invalides");
         setLoading(false);
-        onLogin(email.trim());
-      } else {
+        onLogin(data, remember);
+      })
+      .catch((err) => {
         setLoading(false);
-        setError("Mot de passe incorrect. Entrez : plantai2026");
-      }
-    }, 1200);
+        setError(err.message || "Connexion impossible — vérifiez que le serveur est démarré.");
+      });
   };
 
   const fillDemo = () => { setEmail(DEMO_EMAIL); setPassword(DEMO_PASSWORD); setError(""); };
@@ -3084,9 +3089,10 @@ function LoginPage({ onLogin /* onLogin(email) */ }) {
 
           {/* Hint démonstration */}
           <div className="login-hint" onClick={fillDemo} style={{cursor:"pointer"}} title="Cliquer pour remplir automatiquement">
-            <strong>🎓 Accès démonstration (cliquer pour remplir) :</strong><br/>
+            <strong>🎓 Compte de démonstration (cliquer pour remplir) :</strong><br/>
             📧 Email : <strong>{DEMO_EMAIL}</strong><br/>
-            🔑 Mot de passe : <strong>{DEMO_PASSWORD}</strong>
+            🔑 Mot de passe : <strong>{DEMO_PASSWORD}</strong><br/>
+            <span style={{fontSize:"0.7rem",opacity:0.75}}>⚠️ Ce compte doit exister en base — voir backend/seed_admin.py</span>
           </div>
 
           <div className="login-footer">
@@ -3433,11 +3439,138 @@ function ParticleField() {
   return React.createElement('canvas', { id: 'particle-bg', ref: canvasRef });
 }
 
+/* ══════════════ GESTION DES UTILISATEURS (Administrateur) ══════════════ */
+function UsersAdminPage({ apiUrl, authHeaders, currentUserId }) {
+  const [users, setUsers]     = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState("");
+  const [creating, setCreating] = useState(false);
+  const emptyForm = {nom:"",prenom:"",email:"",motDePasse:"",role:"maraicher",exploitation:""};
+  const [form, setForm] = useState(emptyForm);
+
+  const loadUsers = () => {
+    setLoading(true);
+    fetch(`${apiUrl}/users`, {headers: authHeaders})
+      .then(r => r.json())
+      .then(data => { setUsers(Array.isArray(data) ? data : []); setLoading(false); })
+      .catch(() => { setError("Impossible de charger les utilisateurs"); setLoading(false); });
+  };
+
+  useEffect(() => { loadUsers(); }, []);
+
+  const handleCreate = (e) => {
+    e.preventDefault();
+    setError(""); setCreating(true);
+    fetch(`${apiUrl}/users`, {
+      method:  "POST",
+      headers: {"Content-Type": "application/json", ...authHeaders},
+      body:    JSON.stringify(form),
+    })
+      .then(async (r) => {
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || "Erreur lors de la création");
+        setForm(emptyForm);
+        loadUsers();
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setCreating(false));
+  };
+
+  const handleDelete = (id) => {
+    if (!window.confirm("Supprimer cet utilisateur ?")) return;
+    fetch(`${apiUrl}/users/${id}`, {method: "DELETE", headers: authHeaders})
+      .then(() => loadUsers())
+      .catch(() => setError("Erreur lors de la suppression"));
+  };
+
+  const inputStyle = {flex:"1 1 140px",padding:"7px 10px",borderRadius:"7px",border:"1px solid var(--border)",background:"var(--card)",color:"var(--text)"};
+
+  return (
+    <div className="chart-card">
+      <div className="cc-title">🛡️ Gestion des utilisateurs</div>
+      <div className="cc-sub">{users.length} utilisateur{users.length>1?"s":""} enregistré{users.length>1?"s":""}</div>
+
+      {error && <div className="login-error" style={{marginTop:"10px"}}><span>⚠️</span> {error}</div>}
+
+      <form onSubmit={handleCreate} style={{display:"flex",flexWrap:"wrap",gap:"8px",margin:"14px 0",padding:"14px",background:"var(--bg)",borderRadius:"10px",border:"1.5px solid var(--border)"}}>
+        <input required placeholder="Nom" value={form.nom} onChange={e=>setForm(f=>({...f,nom:e.target.value}))} style={inputStyle}/>
+        <input placeholder="Prénom" value={form.prenom} onChange={e=>setForm(f=>({...f,prenom:e.target.value}))} style={inputStyle}/>
+        <input required type="email" placeholder="Email" value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))} style={{...inputStyle,flexBasis:"180px"}}/>
+        <input required type="password" placeholder="Mot de passe" value={form.motDePasse} onChange={e=>setForm(f=>({...f,motDePasse:e.target.value}))} style={inputStyle}/>
+        <select value={form.role} onChange={e=>setForm(f=>({...f,role:e.target.value}))} style={inputStyle}>
+          <option value="maraicher">Maraîcher</option>
+          <option value="administrateur">Administrateur</option>
+        </select>
+        {form.role==="maraicher" && (
+          <input placeholder="Exploitation" value={form.exploitation} onChange={e=>setForm(f=>({...f,exploitation:e.target.value}))} style={inputStyle}/>
+        )}
+        <button type="submit" disabled={creating} className="btn-login" style={{width:"auto",padding:"8px 16px",flex:"0 0 auto"}}>
+          {creating ? "Création…" : "+ Ajouter"}
+        </button>
+      </form>
+
+      {loading
+        ? <div className="empty-box"><div className="e-icon">⏳</div><p>Chargement…</p></div>
+        : users.length===0
+        ? <div className="empty-box"><div className="e-icon">👤</div><p>Aucun utilisateur.</p></div>
+        : <div className="tbl-scroll"><table>
+            <thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Exploitation</th><th></th></tr></thead>
+            <tbody>
+              {users.map(u => (
+                <tr key={u.idUtilisateur}>
+                  <td className="td-bold">{u.prenom} {u.nom}</td>
+                  <td>{u.email}</td>
+                  <td><span className={`pill pill-${u.role==="administrateur"?"critical":"healthy"}`}>{u.role==="administrateur"?"🛡️ Admin":"🌾 Maraîcher"}</span></td>
+                  <td style={{color:"var(--text3)"}}>{u.exploitation||"—"}</td>
+                  <td>
+                    {u.idUtilisateur!==currentUserId && (
+                      <button onClick={()=>handleDelete(u.idUtilisateur)} style={{padding:"4px 10px",background:"#fee2e2",color:"#dc2626",border:"1.5px solid #fecaca",borderRadius:"7px",fontSize:"0.72rem",cursor:"pointer",fontWeight:700}}>
+                        🗑 Supprimer
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  );
+}
+
 /* ══════════════ APP ══════════════ */
 function App() {
   const [showSplash, setShowSplash] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userEmail,  setUserEmail]  = useState("");
+  const [authToken, setAuthToken] = useState(()=>localStorage.getItem('plantai_token')||sessionStorage.getItem('plantai_token')||"");
+  const [userRole,  setUserRole]  = useState(()=>localStorage.getItem('plantai_role') ||sessionStorage.getItem('plantai_role') ||"");
+  const [userIdCourant, setUserIdCourant] = useState(()=>localStorage.getItem('plantai_userId')||sessionStorage.getItem('plantai_userId')||"");
+  const [isLoggedIn, setIsLoggedIn] = useState(()=>!!(localStorage.getItem('plantai_token')||sessionStorage.getItem('plantai_token')));
+  const [userEmail,  setUserEmail]  = useState(()=>localStorage.getItem('plantai_email')||sessionStorage.getItem('plantai_email')||"");
+
+  /* ── Connexion réelle : persiste le token JWT (localStorage si "se souvenir", sinon sessionStorage) ── */
+  const handleLogin = (userData, remember) => {
+    const store = remember ? localStorage : sessionStorage;
+    store.setItem('plantai_token',  userData.token);
+    store.setItem('plantai_role',   userData.role);
+    store.setItem('plantai_userId', userData.idUtilisateur);
+    store.setItem('plantai_email',  userData.email);
+    setAuthToken(userData.token);
+    setUserRole(userData.role);
+    setUserIdCourant(userData.idUtilisateur);
+    setUserEmail(userData.email);
+    setIsLoggedIn(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('plantai_token'); localStorage.removeItem('plantai_role');
+    localStorage.removeItem('plantai_userId'); localStorage.removeItem('plantai_email');
+    sessionStorage.removeItem('plantai_token'); sessionStorage.removeItem('plantai_role');
+    sessionStorage.removeItem('plantai_userId'); sessionStorage.removeItem('plantai_email');
+    setAuthToken(""); setUserRole(""); setUserIdCourant(""); setUserEmail(""); setIsLoggedIn(false);
+  };
+
+  const authHeaders = authToken ? {'Authorization': `Bearer ${authToken}`} : {};
   const [darkMode,  setDarkMode]   = useState(false);
   const [page,setPage]           = useState("dashboard");
   const [imageSrc,setImageSrc]   = useState(null);
@@ -3492,25 +3625,30 @@ function App() {
   useEffect(()=>{ document.body.classList.toggle("dark", darkMode); },[darkMode]);
 
   // ── Chargement de l'historique depuis MongoDB au démarrage ───────────────
+  // Authentifié → /history (analyses de l'utilisateur connecté, ou toutes si admin)
+  // Sinon       → /api/history (legacy, non filtré) en repli
   useEffect(()=>{
     const loadHistory = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/history`);
+        const url = authToken ? `${API_URL}/history` : `${API_URL}/api/history`;
+        const res = await fetch(url, authToken ? {headers: authHeaders} : undefined);
         if (!res.ok) return;
         const records = await res.json();
         if (!Array.isArray(records) || records.length === 0) return;
         setHistory(records.map(r => ({
-          ...r,
-          id:   r.id   || r._id || Date.now(),
-          dbId: r._id  || r.dbId || null,
-          date: new Date(r.date),
+          ...transformBackendResponse(r),
+          id:     r.id  || r._id || Date.now(),
+          dbId:   r._id || r.dbId || null,
+          image:  r.image,
+          source: r.source,
+          date:   new Date(r.date),
         })));
       } catch(e) {
         console.warn('Historique MongoDB non disponible:', e.message);
       }
     };
     loadHistory();
-  }, []);
+  }, [authToken]);
 
   // ── Polling ESP32 — vérification toutes les 5 secondes ───────────────────
   useEffect(()=>{
@@ -3611,7 +3749,7 @@ function App() {
     setLoading(true); setResult(null);
     try {
       const fd = new FormData(); fd.append("image", imageFile);
-      const res = await fetch(`${API_URL}/api/predict`, { method:"POST", body:fd });
+      const res = await fetch(`${API_URL}/api/predict`, { method:"POST", headers: authHeaders, body:fd });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const raw = await res.json();
       if (raw.error) throw new Error(raw.error);
@@ -3631,7 +3769,7 @@ function App() {
     try {
       const res = await fetch(`${API_URL}/api/esp32/capture`, {
         method: 'POST',
-        headers: {'Content-Type':'application/json'},
+        headers: {'Content-Type':'application/json', ...authHeaders},
         body: JSON.stringify({ip: esp32Ip}),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -3662,7 +3800,8 @@ function App() {
           : `Analysé · Confiance : ${result.score}%`)
       : "Soumettez une image pour démarrer";
 
-  const TABS = [{id:"dashboard",label:"📊 Dashboard"},{id:"analyse",label:"🔍 Analyser"},{id:"history",label:"🗂️ Historique"},{id:"stats",label:"📈 Statistiques"},{id:"maladies",label:"🦠 Maladies"},{id:"projet",label:"📖 Projet"}];
+  const TABS = [{id:"dashboard",label:"📊 Dashboard"},{id:"analyse",label:"🔍 Analyser"},{id:"history",label:"🗂️ Historique"},{id:"stats",label:"📈 Statistiques"},{id:"maladies",label:"🦠 Maladies"},{id:"projet",label:"📖 Projet"}]
+    .concat(userRole==="administrateur" ? [{id:"users",label:"🛡️ Utilisateurs"}] : []);
 
   /* ── Mobile menu ── */
   const [menuOpen, setMenuOpen] = useState(false);
@@ -3876,7 +4015,7 @@ function App() {
   if (showSplash) return <SplashScreen onDone={()=>setShowSplash(false)}/>;
 
   /* Page de connexion */
-  if (!isLoggedIn) return <LoginPage onLogin={(email)=>{ setUserEmail(email); setIsLoggedIn(true); }}/>;
+  if (!isLoggedIn) return <LoginPage onLogin={handleLogin}/>;
 
   return (<div className="dashboard-enter">
     {/* ═══ GLOBAL EFFECTS ═══ */}
@@ -3955,7 +4094,7 @@ function App() {
           <div className="nav-avatar">{userInitials}</div>
           <div style={{textAlign:"left"}}>
             <div className="nav-profile-name">{userName}</div>
-            <div className="nav-profile-role">Étudiant IoT</div>
+            <div className="nav-profile-role">{userRole==="administrateur" ? "🛡️ Administrateur" : userRole==="maraicher" ? "🌾 Maraîcher" : "Étudiant IoT"}</div>
           </div>
           <span className={`nav-chevron ${profileOpen?"open":""}`}>▼</span>
         </button>
@@ -3968,7 +4107,7 @@ function App() {
               <div>
                 <div className="pd-name">{userName}</div>
                 <div className="pd-email">{userEmail}</div>
-                <span className="pd-role-badge">🎓 Projet Tutoré 2026</span>
+                <span className="pd-role-badge">{userRole==="administrateur" ? "🛡️ Administrateur" : userRole==="maraicher" ? "🌾 Maraîcher" : "🎓 Projet Tutoré 2026"}</span>
               </div>
             </div>
 
@@ -4005,7 +4144,7 @@ function App() {
                 Connecté depuis {Math.round((new Date()-loginTime.current)/60000)||"<1"} min
               </div>
               <div className="pd-sep"/>
-              <div className="pd-item danger" onClick={()=>{ setProfileOpen(false); setIsLoggedIn(false); setUserEmail(""); }}>
+              <div className="pd-item danger" onClick={()=>{ setProfileOpen(false); handleLogout(); }}>
                 <span className="pd-item-icon">🚪</span> Se déconnecter
               </div>
             </div>
@@ -4044,7 +4183,7 @@ function App() {
       </div>
       <div className="mobile-menu-sep"/>
       <button className="mobile-tab" style={{color:"#dc2626"}}
-        onClick={()=>{ setMenuOpen(false); setIsLoggedIn(false); setUserEmail(""); }}>
+        onClick={()=>{ setMenuOpen(false); handleLogout(); }}>
         🚪 Se déconnecter
       </button>
     </div>
@@ -4955,6 +5094,10 @@ function App() {
           </div>
         </>);
       })()}
+
+      {page==="users" && userRole==="administrateur" && (
+        <UsersAdminPage apiUrl={API_URL} authHeaders={authHeaders} currentUserId={userIdCourant}/>
+      )}
 
       {page==="projet" && (()=>{
         const goto = id => { const el=document.getElementById(id); if(el) el.scrollIntoView({behavior:"smooth",block:"start"}); };

@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, g
 from flask_cors import CORS
 import os
 import sys
@@ -11,6 +11,11 @@ from werkzeug.utils import secure_filename
 from model_logic import run_inference
 from dotenv import load_dotenv
 from datetime import datetime, timezone
+
+from auth import (
+    login_required, role_required,
+    hash_password, verify_password, generate_token,
+)
 
 load_dotenv()
 
@@ -92,6 +97,55 @@ def allowed_file(filename):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# ── MONGODB : COLLECTIONS UTILISATEURS & CAPTEURS ─────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+_users_col   = None
+_sensors_col = None
+
+
+def get_users_col():
+    """Retourne la collection MongoDB 'users' (lazy init, index unique sur email)."""
+    global _users_col
+    if _users_col is not None:
+        return _users_col
+    col = get_history_col()  # déclenche l'init de _mongo_col / vérifie la connexion
+    if col is None:
+        return None
+    db = col.database
+    _users_col = db['users']
+    _users_col.create_index('email', unique=True)
+    return _users_col
+
+
+def get_sensors_col():
+    """Retourne la collection MongoDB 'sensors_data' (lazy init)."""
+    global _sensors_col
+    if _sensors_col is not None:
+        return _sensors_col
+    col = get_history_col()
+    if col is None:
+        return None
+    db = col.database
+    _sensors_col = db['sensors_data']
+    _sensors_col.create_index([('dateMesure', -1)])
+    return _sensors_col
+
+
+def _user_to_dict(doc: dict) -> dict:
+    """Sérialise un document utilisateur pour l'API — ne renvoie jamais motDePasse."""
+    out = {
+        'idUtilisateur': str(doc['_id']),
+        'nom':           doc.get('nom'),
+        'prenom':        doc.get('prenom'),
+        'email':         doc.get('email'),
+        'role':          doc.get('role'),
+    }
+    if doc.get('role') == 'maraicher':
+        out['exploitation'] = doc.get('exploitation')
+    return out
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # ── ROUTE ACCUEIL ─────────────────────────────────────────────────────────────
 # ══════════════════════════════════════════════════════════════════════════════
 @app.route('/')
@@ -100,12 +154,19 @@ def home():
         'status':    'ok',
         'message':   'PlantAI Backend opérationnel',
         'endpoints': {
+            '/auth/login':          'POST  — Connexion (email + motDePasse) → token + rôle',
+            '/auth/logout':         'POST  — Déconnexion (authentifié)',
             '/api/predict':         'POST  — Analyser une image (fichier)',
             '/api/predict/cnn':     'POST  — Analyser une image via le CNN Keras (ia/model.py)',
             '/api/esp32/status':    'GET   — Vérifier la connexion ESP32-CAM',
             '/api/esp32/capture':   'POST  — Capturer depuis ESP32-CAM et analyser',
             '/api/esp32/stream_url':'GET   — URL du flux MJPEG ESP32',
-            '/api/history':         'GET/POST/DELETE — Historique des analyses',
+            '/api/history':         'GET/POST/DELETE — Historique des analyses (legacy, non authentifié)',
+            '/history':             'GET   — Historique de l\'utilisateur connecté (authentifié)',
+            '/users':               'GET/POST — Gestion des utilisateurs (administrateur)',
+            '/users/<id>':          'PUT/DELETE — Modifier/supprimer un utilisateur (administrateur)',
+            '/sensors/data':        'GET/POST — Données capteurs (température/humidité)',
+            '/sensors/data/simulate':'POST — Simule l\'envoi de données capteur (test)',
             '/health':              'GET   — Santé du service',
         },
     })
@@ -118,9 +179,47 @@ def health():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# ── AUTHENTIFICATION (diagramme de séquence "Connexion") ─────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+@app.route('/auth/login', methods=['POST'])
+def login():
+    data = request.get_json(silent=True) or {}
+    email        = (data.get('email') or '').strip().lower()
+    mot_de_passe = data.get('motDePasse') or data.get('password') or ''
+
+    if not email or not mot_de_passe:
+        return jsonify({'error': 'Email et mot de passe requis'}), 400
+
+    col = get_users_col()
+    if col is None:
+        return jsonify({'error': 'Base de données indisponible'}), 503
+
+    user = col.find_one({'email': email})
+    if user is None or not verify_password(mot_de_passe, user['motDePasse']):
+        return jsonify({'error': 'Identifiants invalides'}), 401
+
+    user_out = _user_to_dict(user)
+    token = generate_token({
+        'idUtilisateur': user_out['idUtilisateur'],
+        'email':         user_out['email'],
+        'role':          user_out['role'],
+    })
+
+    return jsonify({'token': token, **user_out})
+
+
+@app.route('/auth/logout', methods=['POST'])
+@login_required
+def logout():
+    # JWT stateless : la déconnexion est gérée côté client (suppression du token).
+    return jsonify({'ok': True, 'message': 'Déconnecté'})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # ── PRÉDICTION SUR IMAGE UPLOADÉE ─────────────────────────────────────────────
 # ══════════════════════════════════════════════════════════════════════════════
 @app.route('/api/predict', methods=['POST'])
+@role_required('maraicher')
 def predict():
     img_path = None
     try:
@@ -142,9 +241,10 @@ def predict():
         # ── Auto-sauvegarde MongoDB ──────────────────────────────────────────
         entry = {
             **result,
-            'image':  filename,
-            'source': 'api',
-            'date':   datetime.now(timezone.utc),
+            'image':   filename,
+            'source':  'api',
+            'date':    datetime.now(timezone.utc),
+            'userId':  g.current_user['idUtilisateur'],
         }
         db_id = _save_prediction(entry)
         if db_id:
@@ -178,6 +278,7 @@ def _predict_cnn(img_path):
 
 
 @app.route('/api/predict/cnn', methods=['POST'])
+@role_required('maraicher')
 def predict_cnn():
     img_path = None
     try:
@@ -199,9 +300,10 @@ def predict_cnn():
         # ── Auto-sauvegarde MongoDB ──────────────────────────────────────────
         entry = {
             **result,
-            'image':  filename,
-            'source': 'cnn_keras',
-            'date':   datetime.now(timezone.utc),
+            'image':   filename,
+            'source':  'cnn_keras',
+            'date':    datetime.now(timezone.utc),
+            'userId':  g.current_user['idUtilisateur'],
         }
         db_id = _save_prediction(entry)
         if db_id:
@@ -285,6 +387,7 @@ def esp32_sensors():
 # ── ESP32-CAM : CAPTURER ET ANALYSER ──────────────────────────────────════════
 # ══════════════════════════════════════════════════════════════════════════════
 @app.route('/api/esp32/capture', methods=['POST'])
+@role_required('maraicher')
 def esp32_capture():
     data = request.get_json(silent=True) or {}
     ip   = data.get('ip', ESP32_DEFAULT_IP).strip()
@@ -313,8 +416,9 @@ def esp32_capture():
         # ── Auto-sauvegarde MongoDB ──────────────────────────────────────────
         entry = {
             **result,
-            'image':  f'ESP32-CAM ({ip})',
-            'date':   datetime.now(timezone.utc),
+            'image':   f'ESP32-CAM ({ip})',
+            'date':    datetime.now(timezone.utc),
+            'userId':  g.current_user['idUtilisateur'],
         }
         db_id = _save_prediction(entry)
         if db_id:
@@ -441,11 +545,217 @@ def clear_history():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# ── HISTORIQUE DE L'UTILISATEUR CONNECTÉ (diagramme "Consultation historique") ─
+# ══════════════════════════════════════════════════════════════════════════════
+@app.route('/history', methods=['GET'])
+@role_required('maraicher', 'administrateur')
+def get_user_history():
+    """Maraîcher : ses propres analyses (consulterHistorique()).
+    Administrateur : toutes les analyses (consulterAnalyses()).
+    Même format que /api/history (label, confidence, disease_info, image, source, date)
+    pour rester compatible avec transformBackendResponse() côté frontend."""
+    col = get_history_col()
+    if col is None:
+        return jsonify([])
+
+    query = {}
+    if g.current_user.get('role') != 'administrateur':
+        query['userId'] = g.current_user['idUtilisateur']
+
+    try:
+        from pymongo import DESCENDING
+        records = list(col.find(query).sort('date', DESCENDING).limit(200))
+        return jsonify([_serialize(r) for r in records])
+    except Exception as e:
+        print(f"Erreur lecture /history : {e}")
+        return jsonify([])
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ── GESTION DES UTILISATEURS (réservée à l'Administrateur) ───────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+@app.route('/users', methods=['GET'])
+@role_required('administrateur')
+def list_users():
+    col = get_users_col()
+    if col is None:
+        return jsonify({'error': 'Base de données indisponible'}), 503
+    return jsonify([_user_to_dict(u) for u in col.find({})])
+
+
+@app.route('/users', methods=['POST'])
+@role_required('administrateur')
+def create_user():
+    """Administrateur.ajouterUtilisateur()"""
+    data = request.get_json(silent=True) or {}
+    nom          = (data.get('nom') or '').strip()
+    prenom       = (data.get('prenom') or '').strip()
+    email        = (data.get('email') or '').strip().lower()
+    mot_de_passe = data.get('motDePasse') or ''
+    role         = data.get('role') or 'maraicher'
+    exploitation = data.get('exploitation')
+
+    if not nom or not email or not mot_de_passe:
+        return jsonify({'error': 'nom, email et motDePasse sont requis'}), 400
+    if role not in ('administrateur', 'maraicher'):
+        return jsonify({'error': "role doit être 'administrateur' ou 'maraicher'"}), 400
+
+    col = get_users_col()
+    if col is None:
+        return jsonify({'error': 'Base de données indisponible'}), 503
+
+    doc = {
+        'nom': nom, 'prenom': prenom, 'email': email,
+        'motDePasse': hash_password(mot_de_passe), 'role': role,
+    }
+    if role == 'maraicher':
+        doc['exploitation'] = exploitation
+
+    try:
+        result = col.insert_one(doc)
+        doc['_id'] = result.inserted_id
+        return jsonify(_user_to_dict(doc)), 201
+    except Exception as e:
+        if 'duplicate key' in str(e).lower():
+            return jsonify({'error': 'Cet email est déjà utilisé'}), 409
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/users/<user_id>', methods=['PUT'])
+@role_required('administrateur')
+def update_user(user_id):
+    """Administrateur.modifierUtilisateur()"""
+    from bson import ObjectId
+    data = request.get_json(silent=True) or {}
+
+    updates = {}
+    for field in ('nom', 'prenom', 'email', 'role', 'exploitation'):
+        if field in data:
+            updates[field] = data[field]
+    if 'motDePasse' in data and data['motDePasse']:
+        updates['motDePasse'] = hash_password(data['motDePasse'])
+
+    if not updates:
+        return jsonify({'error': 'Aucun champ à mettre à jour'}), 400
+
+    col = get_users_col()
+    if col is None:
+        return jsonify({'error': 'Base de données indisponible'}), 503
+
+    try:
+        result = col.find_one_and_update(
+            {'_id': ObjectId(user_id)}, {'$set': updates},
+            return_document=True,
+        )
+        if result is None:
+            return jsonify({'error': 'Utilisateur introuvable'}), 404
+        return jsonify(_user_to_dict(result))
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+
+@app.route('/users/<user_id>', methods=['DELETE'])
+@role_required('administrateur')
+def delete_user(user_id):
+    """Administrateur.supprimerUtilisateur()"""
+    from bson import ObjectId
+    col = get_users_col()
+    if col is None:
+        return jsonify({'error': 'Base de données indisponible'}), 503
+    try:
+        result = col.delete_one({'_id': ObjectId(user_id)})
+        if result.deleted_count == 0:
+            return jsonify({'error': 'Utilisateur introuvable'}), 404
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ── DONNÉES CAPTEURS (DonneesCapteur : temp/humidité air, humidité sol) ───────
+# ══════════════════════════════════════════════════════════════════════════════
+EXEMPLE_DONNEES_CAPTEUR = {
+    'temperatureAir': 24.5,
+    'humiditeAir':    62.0,
+    'humiditeSol':    38.0,
+}
+
+
+def _insert_sensor_reading(data: dict):
+    col = get_sensors_col()
+    if col is None:
+        return None, jsonify({'error': 'Base de données indisponible'}), 503
+
+    for field in ('temperatureAir', 'humiditeAir', 'humiditeSol'):
+        if field not in data:
+            return None, jsonify({'error': f'Champ manquant : {field}'}), 400
+
+    raw_date = data.get('dateMesure')
+    if isinstance(raw_date, str):
+        try:
+            date_mesure = datetime.fromisoformat(raw_date.replace('Z', '+00:00'))
+        except ValueError:
+            date_mesure = datetime.now(timezone.utc)
+    else:
+        date_mesure = datetime.now(timezone.utc)
+
+    doc = {
+        'temperatureAir': float(data['temperatureAir']),
+        'humiditeAir':    float(data['humiditeAir']),
+        'humiditeSol':    float(data['humiditeSol']),
+        'dateMesure':     date_mesure,
+    }
+    if data.get('analyseId'):
+        doc['analyseId'] = data['analyseId']  # référence optionnelle vers Analyse.idAnalyse
+
+    result = col.insert_one(doc)
+    return str(result.inserted_id), None, None
+
+
+@app.route('/sensors/data', methods=['POST'])
+def post_sensor_data():
+    """DonneesCapteur.recevoirDonnees() — appelé par le capteur physique (pas d'auth requise)."""
+    data = request.get_json(silent=True) or {}
+    inserted_id, error_response, status = _insert_sensor_reading(data)
+    if error_response:
+        return error_response, status
+    return jsonify({'ok': True, 'id': inserted_id}), 201
+
+
+@app.route('/sensors/data/simulate', methods=['POST'])
+def simulate_sensor_data():
+    """Route de test : simule l'envoi de données par un capteur, sans matériel réel."""
+    inserted_id, error_response, status = _insert_sensor_reading(dict(EXEMPLE_DONNEES_CAPTEUR))
+    if error_response:
+        return error_response, status
+    return jsonify({'ok': True, 'id': inserted_id, 'donnees_simulees': EXEMPLE_DONNEES_CAPTEUR}), 201
+
+
+@app.route('/sensors/data', methods=['GET'])
+@role_required('maraicher')
+def get_sensor_data():
+    """Maraicher.consulterDonnees()"""
+    col = get_sensors_col()
+    if col is None:
+        return jsonify([])
+    try:
+        records = list(col.find({}).sort('dateMesure', -1).limit(200))
+        return jsonify([_serialize(r) for r in records])
+    except Exception as e:
+        print(f"Erreur lecture /sensors/data : {e}")
+        return jsonify([])
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # ── GESTIONNAIRES D'ERREURS ────────────────────────────────────────────────────
 # ══════════════════════════════════════════════════════════════════════════════
 @app.errorhandler(404)
 def not_found(_):
-    return jsonify({'error': 'Route introuvable', 'endpoints': ['/', '/health', '/api/predict', '/api/predict/cnn', '/api/esp32/status', '/api/esp32/capture', '/api/history']}), 404
+    return jsonify({'error': 'Route introuvable', 'endpoints': [
+        '/', '/health', '/auth/login', '/api/predict', '/api/predict/cnn',
+        '/api/esp32/status', '/api/esp32/capture', '/api/history', '/history',
+        '/users', '/sensors/data',
+    ]}), 404
 
 @app.errorhandler(413)
 def too_large(_):
