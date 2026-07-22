@@ -3852,6 +3852,7 @@ function App() {
   // Annotations
   const [noteModal,  setNoteModal]  = useState(null);   // {id, maladie, date, note}
   const [noteDraft,  setNoteDraft]  = useState("");
+  const [malOpen,    setMalOpen]    = useState({});      // page "Maladies" : cultures dépliées
 
   const openNote = (h) => { setNoteModal(h); setNoteDraft(h.note||""); };
   const saveNote = () => {
@@ -5042,8 +5043,8 @@ function App() {
         const totalMal = DISEASE_DB.reduce((s,c)=>s+c.maladies.filter(m=>m.niveau!=="healthy").length,0);
         const totalCultures = DISEASE_DB.length;
         const totalClasses  = DISEASE_DB.reduce((s,c)=>s+c.maladies.length,0);
-        const [open, setOpen] = React.useState({});
-        const toggle = k => setOpen(p=>({...p,[k]:!p[k]}));
+        const open   = malOpen;
+        const toggle = k => setMalOpen(p=>({...p,[k]:!p[k]}));
         return (<>
           <div className="mal-intro">
             <h2>🦠 Maladies détectables par PlantAI</h2>
