@@ -11,7 +11,7 @@ import tempfile
 from werkzeug.utils import secure_filename
 from model_logic import run_inference
 from dotenv import load_dotenv
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from auth import (
     login_required, role_required,
@@ -208,6 +208,23 @@ def _link_maladie(entry: dict, result: dict):
             entry['recommandationId'] = str(maladie['recommandationId'])
 
 
+SENSOR_LINK_WINDOW_SECONDS = 120
+
+
+def _link_recent_sensor_data(analyse_id: str):
+    """Rattache à cette Analyse les DonneesCapteur reçues récemment et pas encore
+    liées à une analyse — 'données capteur disponibles au même moment' (Analyse
+    associée à 0..* Capteur). N'échoue jamais si aucune donnée récente n'existe."""
+    col = get_sensors_col()
+    if col is None:
+        return
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=SENSOR_LINK_WINDOW_SECONDS)
+    col.update_many(
+        {'analyseId': {'$exists': False}, 'dateMesure': {'$gte': cutoff}},
+        {'$set': {'analyseId': analyse_id}},
+    )
+
+
 def _maladie_to_dict(doc: dict, recommandation: dict = None) -> dict:
     out = {
         'idmaladie':  str(doc['_id']),
@@ -348,6 +365,7 @@ def predict():
         db_id = _save_prediction(entry)
         if db_id:
             result['dbId'] = db_id
+            _link_recent_sensor_data(db_id)
         if image_id:
             result['imageId'] = image_id
 
@@ -407,6 +425,7 @@ def predict_cnn():
         db_id = _save_prediction(entry)
         if db_id:
             result['dbId'] = db_id
+            _link_recent_sensor_data(db_id)
         if image_id:
             result['imageId'] = image_id
 
@@ -522,6 +541,7 @@ def esp32_capture():
         db_id = _save_prediction(entry)
         if db_id:
             result['dbId'] = db_id
+            _link_recent_sensor_data(db_id)
         if image_id:
             result['imageId'] = image_id
 

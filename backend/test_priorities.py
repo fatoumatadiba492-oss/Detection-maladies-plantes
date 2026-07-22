@@ -11,7 +11,7 @@ Usage :
 import sys
 import os
 import mongomock
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 
 import app as app_module
@@ -216,6 +216,36 @@ r = client.get('/images/000000000000000000000000')
 check("GET /images/<id inexistant> → 404", r.status_code == 404)
 
 os.remove(permanent_path)  # nettoyage du fichier de test
+
+# ══════════════════════════════════════════════════════════════════════════════
+print("\n=== ÉTAPE 4 — Rattachement automatique analyseId ↔ DonneesCapteur ===")
+
+recent_id = mock_db['sensors_data'].insert_one({
+    'temperatureAir': 22.0, 'humiditeAir': 60.0, 'humiditeSol': 35.0,
+    'dateMesure': datetime.now(timezone.utc),
+}).inserted_id
+
+old_id = mock_db['sensors_data'].insert_one({
+    'temperatureAir': 18.0, 'humiditeAir': 50.0, 'humiditeSol': 30.0,
+    'dateMesure': datetime.now(timezone.utc) - timedelta(seconds=999),
+}).inserted_id
+
+already_linked_id = mock_db['sensors_data'].insert_one({
+    'temperatureAir': 20.0, 'humiditeAir': 55.0, 'humiditeSol': 32.0,
+    'dateMesure': datetime.now(timezone.utc), 'analyseId': 'une-autre-analyse',
+}).inserted_id
+
+app_module._link_recent_sensor_data('analyse-test-1')
+
+recent_doc  = mock_db['sensors_data'].find_one({'_id': recent_id})
+old_doc     = mock_db['sensors_data'].find_one({'_id': old_id})
+already_doc = mock_db['sensors_data'].find_one({'_id': already_linked_id})
+
+check("donnée récente sans analyseId → rattachée à la nouvelle analyse",
+      recent_doc.get('analyseId') == 'analyse-test-1')
+check("donnée ancienne (hors fenêtre) → non rattachée", 'analyseId' not in old_doc)
+check("donnée déjà rattachée à une autre analyse → non écrasée",
+      already_doc.get('analyseId') == 'une-autre-analyse')
 
 # ══════════════════════════════════════════════════════════════════════════════
 print(f"\n{'='*50}\nRésultat : {passed} réussis / {failed} échoués\n{'='*50}")
