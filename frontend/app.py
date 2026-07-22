@@ -6,6 +6,10 @@ Lancer : python app.py
 
 from flask import Flask, send_from_directory
 import os
+import sys
+
+if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8")
 
 app = Flask(__name__, static_folder=".")
 

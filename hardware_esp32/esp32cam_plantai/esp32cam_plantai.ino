@@ -7,7 +7,7 @@
 //  1. Arduino IDE → Outils → Carte → "AI Thinker ESP32-CAM"
 //  2. Espressif boards manager URL :
 //     https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
-//  3. Remplir WIFI_SSID et WIFI_PASS ci-dessous
+//  3. Copier secrets.h.example en secrets.h et y renseigner WIFI_SSID / WIFI_PASS
 //  4. (Optionnel) Brancher DHT22 : DATA → GPIO 13, VCC → 3.3V, GND → GND
 //     Installer la lib "DHT sensor library" (Adafruit) dans Arduino IDE
 //     Si pas de DHT22, laisser USE_DHT à 0
@@ -31,8 +31,8 @@ DHT dht(DHT_PIN, DHT_TYPE);
 #endif
 
 // ── Configuration WiFi ──────────────────────────────────────
-#define WIFI_SSID  "fatima"
-#define WIFI_PASS  "passer123"
+// SSID / mot de passe définis dans secrets.h (non commité — voir secrets.h.example)
+#include "secrets.h"
 
 // ── Pins caméra AI Thinker ESP32-CAM ───────────────────────
 #define PWDN_GPIO_NUM     32
