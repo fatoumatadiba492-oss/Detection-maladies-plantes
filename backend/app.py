@@ -99,8 +99,10 @@ def allowed_file(filename):
 # ══════════════════════════════════════════════════════════════════════════════
 # ── MONGODB : COLLECTIONS UTILISATEURS & CAPTEURS ─────────────────────────────
 # ══════════════════════════════════════════════════════════════════════════════
-_users_col   = None
-_sensors_col = None
+_users_col          = None
+_sensors_col        = None
+_maladies_col       = None
+_recommandations_col = None
 
 
 def get_users_col():
@@ -129,6 +131,61 @@ def get_sensors_col():
     _sensors_col = db['sensors_data']
     _sensors_col.create_index([('dateMesure', -1)])
     return _sensors_col
+
+
+def get_maladies_col():
+    """Retourne la collection MongoDB 'maladies' (lazy init)."""
+    global _maladies_col
+    if _maladies_col is not None:
+        return _maladies_col
+    col = get_history_col()
+    if col is None:
+        return None
+    _maladies_col = col.database['maladies']
+    return _maladies_col
+
+
+def get_recommandations_col():
+    """Retourne la collection MongoDB 'recommandations' (lazy init)."""
+    global _recommandations_col
+    if _recommandations_col is not None:
+        return _recommandations_col
+    col = get_history_col()
+    if col is None:
+        return None
+    _recommandations_col = col.database['recommandations']
+    return _recommandations_col
+
+
+def _link_maladie(entry: dict, result: dict):
+    """Rattache l'Analyse à la Maladie correspondante (si trouvée) via son codeLabel.
+    N'échoue jamais — une plante saine ou un code non référencé n'a simplement pas de maladieId."""
+    col = get_maladies_col()
+    if col is None:
+        return
+    code_label = result.get('label') or result.get('maladie')
+    if not code_label:
+        return
+    maladie = col.find_one({'codeLabel': code_label})
+    if maladie:
+        entry['maladieId'] = str(maladie['_id'])
+        if maladie.get('recommandationId'):
+            entry['recommandationId'] = str(maladie['recommandationId'])
+
+
+def _maladie_to_dict(doc: dict, recommandation: dict = None) -> dict:
+    out = {
+        'idmaladie':  str(doc['_id']),
+        'nom':        doc.get('nom'),
+        'traitement': doc.get('traitement'),
+    }
+    if recommandation:
+        out['recommandation'] = {
+            'idrecommandation':   str(recommandation['_id']),
+            'texte':              recommandation.get('texte'),
+            'produitsConseilles': recommandation.get('produitsConseilles', []),
+        }
+    return out
 
 
 def _user_to_dict(doc: dict) -> dict:
@@ -167,6 +224,8 @@ def home():
             '/users/<id>':          'PUT/DELETE — Modifier/supprimer un utilisateur (administrateur)',
             '/sensors/data':        'GET/POST — Données capteurs (température/humidité)',
             '/sensors/data/simulate':'POST — Simule l\'envoi de données capteur (test)',
+            '/maladies':            'GET — Catalogue des maladies référencées',
+            '/maladies/<id>':       'GET — Détail d\'une maladie + sa recommandation',
             '/health':              'GET   — Santé du service',
         },
     })
@@ -246,6 +305,7 @@ def predict():
             'date':    datetime.now(timezone.utc),
             'userId':  g.current_user['idUtilisateur'],
         }
+        _link_maladie(entry, result)
         db_id = _save_prediction(entry)
         if db_id:
             result['dbId'] = db_id
@@ -305,6 +365,7 @@ def predict_cnn():
             'date':    datetime.now(timezone.utc),
             'userId':  g.current_user['idUtilisateur'],
         }
+        _link_maladie(entry, result)
         db_id = _save_prediction(entry)
         if db_id:
             result['dbId'] = db_id
@@ -420,6 +481,7 @@ def esp32_capture():
             'date':    datetime.now(timezone.utc),
             'userId':  g.current_user['idUtilisateur'],
         }
+        _link_maladie(entry, result)
         db_id = _save_prediction(entry)
         if db_id:
             result['dbId'] = db_id
@@ -744,6 +806,36 @@ def get_sensor_data():
     except Exception as e:
         print(f"Erreur lecture /sensors/data : {e}")
         return jsonify([])
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ── CATALOGUE DES MALADIES (référentiel, lié 1 Recommandation) ───────────────
+# ══════════════════════════════════════════════════════════════════════════════
+@app.route('/maladies', methods=['GET'])
+def list_maladies():
+    col = get_maladies_col()
+    if col is None:
+        return jsonify([])
+    return jsonify([_maladie_to_dict(m) for m in col.find({})])
+
+
+@app.route('/maladies/<maladie_id>', methods=['GET'])
+def get_maladie(maladie_id):
+    from bson import ObjectId
+    col = get_maladies_col()
+    if col is None:
+        return jsonify({'error': 'Base de données indisponible'}), 503
+    try:
+        maladie = col.find_one({'_id': ObjectId(maladie_id)})
+    except Exception:
+        return jsonify({'error': 'Identifiant invalide'}), 400
+    if maladie is None:
+        return jsonify({'error': 'Maladie introuvable'}), 404
+
+    reco = None
+    if maladie.get('recommandationId'):
+        reco = get_recommandations_col().find_one({'_id': maladie['recommandationId']})
+    return jsonify(_maladie_to_dict(maladie, reco))
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -161,5 +161,35 @@ for route in ('/api/predict', '/api/predict/cnn', '/api/esp32/capture'):
     check(f"{route} avec un maraîcher → passe le contrôle de rôle (pas de 401/403)", r.status_code not in (401, 403))
 
 # ══════════════════════════════════════════════════════════════════════════════
+print("\n=== ÉTAPE 2 — Catalogue Maladies & Recommandations ===")
+
+reco_id = mock_db['recommandations'].insert_one(
+    {'texte': 'Traiter rapidement', 'produitsConseilles': ['Cuivre', 'Soufre']}
+).inserted_id
+maladie_id = mock_db['maladies'].insert_one(
+    {'codeLabel': 'Test___Rouille', 'nom': 'Rouille test', 'traitement': 'Fongicide', 'recommandationId': reco_id}
+).inserted_id
+
+entry = {}
+app_module._link_maladie(entry, {'label': 'Test___Rouille'})
+check("_link_maladie rattache maladieId depuis result['label']", entry.get('maladieId') == str(maladie_id))
+check("_link_maladie rattache recommandationId", entry.get('recommandationId') == str(reco_id))
+
+entry2 = {}
+app_module._link_maladie(entry2, {'label': 'Inconnu___XYZ'})
+check("_link_maladie ignore silencieusement un code non référencé", 'maladieId' not in entry2)
+
+r = client.get('/maladies')
+check("GET /maladies liste le catalogue", r.status_code == 200 and len(r.get_json()) == 1)
+
+r = client.get(f'/maladies/{maladie_id}')
+data = r.get_json()
+check("GET /maladies/<id> renvoie la recommandation imbriquée",
+      r.status_code == 200 and data['recommandation']['texte'] == 'Traiter rapidement')
+
+r = client.get('/maladies/000000000000000000000000')
+check("GET /maladies/<id inexistant> → 404", r.status_code == 404)
+
+# ══════════════════════════════════════════════════════════════════════════════
 print(f"\n{'='*50}\nRésultat : {passed} réussis / {failed} échoués\n{'='*50}")
 sys.exit(1 if failed else 0)
