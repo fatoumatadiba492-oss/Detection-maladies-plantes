@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, Response, g
 from flask_cors import CORS
 import os
 import sys
+import uuid
 import requests as http_requests
 
 if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
@@ -103,6 +104,7 @@ _users_col          = None
 _sensors_col        = None
 _maladies_col       = None
 _recommandations_col = None
+_images_col         = None
 
 
 def get_users_col():
@@ -155,6 +157,39 @@ def get_recommandations_col():
         return None
     _recommandations_col = col.database['recommandations']
     return _recommandations_col
+
+
+def get_images_col():
+    """Retourne la collection MongoDB 'images' (lazy init)."""
+    global _images_col
+    if _images_col is not None:
+        return _images_col
+    col = get_history_col()
+    if col is None:
+        return None
+    _images_col = col.database['images']
+    return _images_col
+
+
+def _persist_image(tmp_path: str, nom_image: str):
+    """Rend l'image permanente (nom de fichier unique, plus de suppression après
+    analyse) et l'enregistre dans la collection 'images'.
+    Retourne (idImage ou None si DB indisponible, chemin absolu permanent)."""
+    ext = os.path.splitext(tmp_path)[1] or os.path.splitext(nom_image)[1] or '.jpg'
+    unique_name    = f"{uuid.uuid4().hex}{ext}"
+    permanent_path = os.path.join(UPLOAD_FOLDER, unique_name)
+    os.replace(tmp_path, permanent_path)
+
+    col = get_images_col()
+    if col is None:
+        return None, permanent_path
+    doc = {
+        'nomImage':    nom_image,
+        'cheminImage': unique_name,
+        'dateCapture': datetime.now(timezone.utc),
+    }
+    result = col.insert_one(doc)
+    return str(result.inserted_id), permanent_path
 
 
 def _link_maladie(entry: dict, result: dict):
@@ -295,6 +330,8 @@ def predict():
         img_path = os.path.join(UPLOAD_FOLDER, filename)
         file.save(img_path)
 
+        image_id, img_path = _persist_image(img_path, filename)
+
         result = run_inference(img_path)
 
         # ── Auto-sauvegarde MongoDB ──────────────────────────────────────────
@@ -305,23 +342,20 @@ def predict():
             'date':    datetime.now(timezone.utc),
             'userId':  g.current_user['idUtilisateur'],
         }
+        if image_id:
+            entry['imageId'] = image_id
         _link_maladie(entry, result)
         db_id = _save_prediction(entry)
         if db_id:
             result['dbId'] = db_id
+        if image_id:
+            result['imageId'] = image_id
 
         return jsonify(result)
 
     except Exception as e:
         print(f"Erreur prédiction : {e}")
         return jsonify({'error': "Erreur interne lors du traitement de l'image"}), 500
-
-    finally:
-        if img_path and os.path.exists(img_path):
-            try:
-                os.remove(img_path)
-            except OSError:
-                pass
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -355,6 +389,8 @@ def predict_cnn():
         img_path = os.path.join(UPLOAD_FOLDER, filename)
         file.save(img_path)
 
+        image_id, img_path = _persist_image(img_path, filename)
+
         result = _predict_cnn(img_path)
 
         # ── Auto-sauvegarde MongoDB ──────────────────────────────────────────
@@ -365,10 +401,14 @@ def predict_cnn():
             'date':    datetime.now(timezone.utc),
             'userId':  g.current_user['idUtilisateur'],
         }
+        if image_id:
+            entry['imageId'] = image_id
         _link_maladie(entry, result)
         db_id = _save_prediction(entry)
         if db_id:
             result['dbId'] = db_id
+        if image_id:
+            result['imageId'] = image_id
 
         return jsonify(result)
 
@@ -379,13 +419,6 @@ def predict_cnn():
     except Exception as e:
         print(f"Erreur prédiction CNN : {e}")
         return jsonify({'error': "Erreur interne lors du traitement de l'image"}), 500
-
-    finally:
-        if img_path and os.path.exists(img_path):
-            try:
-                os.remove(img_path)
-            except OSError:
-                pass
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -470,6 +503,8 @@ def esp32_capture():
             f.write(r.content)
             tmp_path = f.name
 
+        image_id, tmp_path = _persist_image(tmp_path, f'ESP32-CAM_{ip}.jpg')
+
         result = run_inference(tmp_path)
         result['source']   = 'esp32'
         result['esp32_ip'] = ip
@@ -481,10 +516,14 @@ def esp32_capture():
             'date':    datetime.now(timezone.utc),
             'userId':  g.current_user['idUtilisateur'],
         }
+        if image_id:
+            entry['imageId'] = image_id
         _link_maladie(entry, result)
         db_id = _save_prediction(entry)
         if db_id:
             result['dbId'] = db_id
+        if image_id:
+            result['imageId'] = image_id
 
         return jsonify(result)
 
@@ -497,13 +536,6 @@ def esp32_capture():
     except Exception as e:
         print(f"Erreur ESP32 capture : {e}")
         return jsonify({'error': f'Erreur interne : {str(e)}'}), 500
-
-    finally:
-        if tmp_path and os.path.exists(tmp_path):
-            try:
-                os.remove(tmp_path)
-            except OSError:
-                pass
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -806,6 +838,27 @@ def get_sensor_data():
     except Exception as e:
         print(f"Erreur lecture /sensors/data : {e}")
         return jsonify([])
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ── IMAGES PERSISTÉES (idImage, nomImage, cheminImage, dateCapture) ──────────
+# ══════════════════════════════════════════════════════════════════════════════
+@app.route('/images/<image_id>', methods=['GET'])
+def get_image(image_id):
+    """Sert le fichier image d'une Analyse — servi par idImage (pas par chemin brut)
+    pour ne jamais exposer le système de fichiers à un chemin arbitraire."""
+    from bson import ObjectId
+    from flask import send_from_directory
+    col = get_images_col()
+    if col is None:
+        return jsonify({'error': 'Base de données indisponible'}), 503
+    try:
+        doc = col.find_one({'_id': ObjectId(image_id)})
+    except Exception:
+        return jsonify({'error': 'Identifiant invalide'}), 400
+    if doc is None:
+        return jsonify({'error': 'Image introuvable'}), 404
+    return send_from_directory(os.path.abspath(UPLOAD_FOLDER), doc['cheminImage'])
 
 
 # ══════════════════════════════════════════════════════════════════════════════

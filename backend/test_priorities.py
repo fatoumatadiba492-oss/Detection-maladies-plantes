@@ -9,8 +9,10 @@ Usage :
 """
 
 import sys
+import os
 import mongomock
 from datetime import datetime, timezone
+from bson import ObjectId
 
 import app as app_module
 from auth import hash_password
@@ -189,6 +191,31 @@ check("GET /maladies/<id> renvoie la recommandation imbriquée",
 
 r = client.get('/maladies/000000000000000000000000')
 check("GET /maladies/<id inexistant> → 404", r.status_code == 404)
+
+# ══════════════════════════════════════════════════════════════════════════════
+print("\n=== ÉTAPE 3 — Persistance des images ===")
+
+os.makedirs(app_module.UPLOAD_FOLDER, exist_ok=True)
+fake_upload = os.path.join(app_module.UPLOAD_FOLDER, 'test_upload.jpg')
+with open(fake_upload, 'wb') as f:
+    f.write(b'\xff\xd8\xff\xe0FAKEJPEGDATA')
+
+image_id, permanent_path = app_module._persist_image(fake_upload, 'feuille_test.jpg')
+check("_persist_image renvoie un idImage", bool(image_id))
+check("_persist_image renomme vers un chemin permanent unique", permanent_path != fake_upload and os.path.exists(permanent_path))
+check("l'ancien chemin temporaire n'existe plus (renommé, pas copié)", not os.path.exists(fake_upload))
+
+img_doc = mock_db['images'].find_one({'_id': ObjectId(image_id)})
+check("le document 'images' contient nomImage/cheminImage/dateCapture",
+      img_doc is not None and img_doc['nomImage'] == 'feuille_test.jpg' and 'dateCapture' in img_doc)
+
+r = client.get(f'/images/{image_id}')
+check("GET /images/<id> sert le fichier (200)", r.status_code == 200)
+
+r = client.get('/images/000000000000000000000000')
+check("GET /images/<id inexistant> → 404", r.status_code == 404)
+
+os.remove(permanent_path)  # nettoyage du fichier de test
 
 # ══════════════════════════════════════════════════════════════════════════════
 print(f"\n{'='*50}\nRésultat : {passed} réussis / {failed} échoués\n{'='*50}")
