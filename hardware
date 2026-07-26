@@ -12,7 +12,7 @@ const char* password  = "MOT_DE_PASSE_WIFI";
 const char* serverURL = "http://192.168.1.XX:5000/predict";
 
 #define DHTPIN  12
-#define DHTTYPE DHT22
+#define DHTTYPE DHT11
 DHT dht(DHTPIN, DHTTYPE);
 
 // Pins caméra AI Thinker

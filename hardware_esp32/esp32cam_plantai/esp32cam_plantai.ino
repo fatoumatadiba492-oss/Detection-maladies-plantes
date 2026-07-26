@@ -8,9 +8,9 @@
 //  2. Espressif boards manager URL :
 //     https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
 //  3. Copier secrets.h.example en secrets.h et y renseigner WIFI_SSID / WIFI_PASS
-//  4. (Optionnel) Brancher DHT22 : DATA → GPIO 13, VCC → 3.3V, GND → GND
+//  4. (Optionnel) Brancher DHT11 : DATA → GPIO 13, VCC → 3.3V, GND → GND
 //     Installer la lib "DHT sensor library" (Adafruit) dans Arduino IDE
-//     Si pas de DHT22, laisser USE_DHT à 0
+//     Si pas de DHT11, laisser USE_DHT à 0
 //  5. Flasher → Ouvrir le moniteur série 115200 → noter l'IP
 //  6. Entrer cette IP dans PlantAI → badge ESP32-CAM
 // ============================================================
@@ -19,14 +19,14 @@
 #include "esp_http_server.h"
 #include <WiFi.h>
 
-// ── Capteur DHT22 — température + humidité ambiante ────────────────────────
+// ── Capteur DHT11 — température + humidité ambiante ────────────────────────
 // Branchement : DATA → GPIO 13 | VCC → 3.3 V | GND → GND
-// Mettre USE_DHT 0 si aucun capteur DHT22 branché.
-#define USE_DHT 0
+// Mettre USE_DHT 0 si aucun capteur DHT11 branché.
+#define USE_DHT 1
 #if USE_DHT
 #include <DHT.h>
 #define DHT_PIN  13
-#define DHT_TYPE DHT22
+#define DHT_TYPE DHT11
 DHT dht(DHT_PIN, DHT_TYPE);
 #endif
 
@@ -143,7 +143,7 @@ static esp_err_t capture_handler(httpd_req_t* req) {
 }
 
 // ── GET /sensors ─────────────────────────────────────────────
-// Retourne température et humidité (DHT22) + RSSI WiFi
+// Retourne température et humidité (DHT11) + RSSI WiFi
 static esp_err_t sensors_handler(httpd_req_t* req) {
   float t = -1.0f, h = -1.0f;
 #if USE_DHT
@@ -220,7 +220,7 @@ void setup() {
   Serial.println("\n=== PlantAI ESP32-CAM ===");
 #if USE_DHT
   dht.begin();
-  Serial.println("Capteur DHT22 initialise (GPIO 13)");
+  Serial.println("Capteur DHT11 initialise (GPIO 13)");
 #endif
   if (!initCamera()) {
     Serial.println("ERREUR camera ! Redemarrage...");

@@ -21,7 +21,17 @@ from auth import (
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+CORS(app, resources={
+    r"/api/*":      {"origins": "*"},
+    r"/auth/*":     {"origins": "*"},
+    r"/history":    {"origins": "*"},
+    r"/users":      {"origins": "*"},
+    r"/users/*":    {"origins": "*"},
+    r"/sensors/*":  {"origins": "*"},
+    r"/maladies":   {"origins": "*"},
+    r"/maladies/*": {"origins": "*"},
+    r"/images/*":   {"origins": "*"},
+})
 
 # ── Configuration uploads ──────────────────────────────────────────────────────
 UPLOAD_FOLDER       = 'uploads/'
@@ -476,7 +486,7 @@ def esp32_status():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# ── ESP32 : DONNÉES CAPTEURS IoT (DHT22 temp/humidité) ────────────────────────
+# ── ESP32 : DONNÉES CAPTEURS IoT (DHT11 temp/humidité) ────────────────────────
 # ══════════════════════════════════════════════════════════════════════════════
 @app.route('/api/esp32/sensors', methods=['GET'])
 def esp32_sensors():

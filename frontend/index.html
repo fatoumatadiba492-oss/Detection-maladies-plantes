@@ -2656,7 +2656,7 @@ function SplashScreen({ onDone }) {
 
   const STEPS = [
     { t: 400,  msg: "Connexion à l'ESP32-CAM…" },
-    { t: 900,  msg: "Chargement du modèle YOLOv8…" },
+    { t: 900,  msg: "Chargement du modèle CNN…" },
     { t: 1500, msg: "Lecture des capteurs IoT…" },
     { t: 2100, msg: "Prêt ✓" },
   ];
@@ -2807,7 +2807,7 @@ function SplashScreen({ onDone }) {
       {/* Tags technos */}
       <div className="splash-tags" style={{position:"relative",zIndex:2}}>
         <span className="splash-tag">📡 ESP32-CAM</span>
-        <span className="splash-tag">🤖 YOLOv8</span>
+        <span className="splash-tag">🤖 CNN</span>
         <span className="splash-tag">🐍 Flask</span>
         <span className="splash-tag">🍃 MongoDB</span>
         <span className="splash-tag">⚛️ React</span>
@@ -2974,12 +2974,12 @@ function LoginPage({ onLogin /* onLogin(email) */ }) {
         <div className="login-left-content">
           <div className="login-left-icon">🌿</div>
           <h2>Détection Intelligente des Maladies des Plantes</h2>
-          <p>Plateforme IoT connectée à l'ESP32-CAM — analyses IA en temps réel avec modèle CNN/YOLO.</p>
+          <p>Plateforme IoT connectée à l'ESP32-CAM — analyses IA en temps réel avec modèle CNN.</p>
           <div className="login-features">
             <div className="login-feature">
               <span className="login-feature-icon">🤖</span>
               <div className="login-feature-text">
-                <strong>Modèle CNN / YOLO</strong>
+                <strong>Modèle CNN</strong>
                 <span>Détection précise sur dataset PlantVillage</span>
               </div>
             </div>
@@ -3097,7 +3097,7 @@ function LoginPage({ onLogin /* onLogin(email) */ }) {
 
           <div className="login-footer">
             Projet Tutoré 2026 · Groupe IoT PlantAI<br/>
-            <span style={{color:"var(--green-dark)",fontWeight:700}}>ESP32-CAM · CNN/YOLO · Flask · MongoDB</span>
+            <span style={{color:"var(--green-dark)",fontWeight:700}}>ESP32-CAM · CNN · Flask · MongoDB</span>
           </div>
 
         </div>
@@ -3595,7 +3595,7 @@ function App() {
   const [esp32TestMsg,     setEsp32TestMsg]     = useState(null);  // {ok,msg}
   const [esp32Testing,     setEsp32Testing]     = useState(false);
 
-  // ── Capteurs IoT réels (ESP32 DHT22) — remplace la simulation si connecté ─
+  // ── Capteurs IoT réels (ESP32 DHT11) — remplace la simulation si connecté ─
   const [realSensors,  setRealSensors]  = useState(null);
   const [sensorsReal,  setSensorsReal]  = useState(false); // true = données réelles
   useEffect(()=>{
@@ -4161,7 +4161,7 @@ function App() {
       <span><kbd>Ctrl</kbd>+<kbd>D</kbd> Dark mode</span>
       <span className="kb-bar-sep">·</span>
       <span><kbd>Ctrl</kbd>+<kbd>P</kbd> Exporter PDF</span>
-      <span style={{marginLeft:"auto",color:"var(--green-dark)",fontWeight:700}}>PlantAI v2.0 · ESP32-CAM · YOLOv8 · Flask</span>
+      <span style={{marginLeft:"auto",color:"var(--green-dark)",fontWeight:700}}>PlantAI v2.0 · ESP32-CAM · CNN · Flask</span>
     </div>
 
     {/* ══ MENU MOBILE ══ */}
@@ -4417,7 +4417,7 @@ function App() {
               <div className="hb-label">💧 HUMIDITÉ AIR</div>
               <div className="hb-value"><AnimatedNumber value={sensors.humidity} suffix="%" decimals={0}/></div>
               <div className="hb-sub">{sensors.humidity<40?"Air sec":sensors.humidity>80?"Trop humide":"Humidité correcte"}</div>
-              <div className="hb-pill">{sensorsReal?"🌫️ DHT22 LIVE":"🌫️ DHT22 (sim)"}</div>
+              <div className="hb-pill">{sensorsReal?"🌫️ DHT11 LIVE":"🌫️ DHT11 (sim)"}</div>
             </TiltCard>
             <TiltCard className="hero-banner" style={{background:"linear-gradient(135deg,#eab308,#a16207)",boxShadow:"0 8px 32px rgba(234,179,8,0.22)"}}>
               <div className="hb-bg-circle c1"/><div className="hb-bg-circle c2"/>
@@ -5405,7 +5405,7 @@ function App() {
               <span className="footer-badge">Flask</span>
               <span className="footer-badge">React</span>
               <span className="footer-badge">HuggingFace ViT</span>
-              <span className="footer-badge">YOLOv8</span>
+              <span className="footer-badge">CNN</span>
               <span className="footer-badge">MongoDB</span>
               <span className="footer-badge">ESP32-CAM</span>
             </div>
