@@ -1,0 +1,7 @@
+# Config locale de l'outil Claude Code (personnelle, pas du code projet)
+.claude/
+.agents/
+
+# Dépendances / caches npm
+node_modules/
+.vite/
