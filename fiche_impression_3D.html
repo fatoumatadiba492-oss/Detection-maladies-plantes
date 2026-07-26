@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fiche d'Impression 3D — Système de Détection Maladies Plantes</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f9; color: #1a1a2e; font-size: 14px; }
+
+    header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+      color: white; padding: 28px 40px; display: flex; align-items: center; gap: 20px;
+    }
+    header .logo { font-size: 42px; }
+    header h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
+    header p { font-size: 13px; opacity: 0.75; margin-top: 4px; }
+    header .badge {
+      margin-left: auto; background: #e94560; color: white;
+      padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 30px 20px; }
+
+    .info-bar {
+      display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 28px;
+    }
+    .info-chip {
+      background: white; border: 1px solid #dde1e7; border-radius: 8px;
+      padding: 10px 16px; display: flex; align-items: center; gap: 8px;
+      font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .info-chip .label { color: #6b7280; font-size: 11px; display: block; }
+    .info-chip .value { font-weight: 600; color: #1a1a2e; }
+    .info-chip .icon { font-size: 20px; }
+
+    h2 {
+      font-size: 16px; font-weight: 700; color: #0f3460;
+      border-left: 4px solid #e94560; padding-left: 12px;
+      margin: 28px 0 16px;
+    }
+
+    .pieces-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 10px; }
+
+    .piece-card {
+      background: white; border-radius: 12px; padding: 18px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07); border: 1px solid #eef0f4;
+      border-top: 4px solid;
+    }
+    .piece-card.clamp { border-top-color: #3b82f6; }
+    .piece-card.housing { border-top-color: #10b981; }
+    .piece-card.camera { border-top-color: #f59e0b; }
+
+    .piece-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+    .piece-card .filename {
+      font-family: monospace; font-size: 11px; color: #6b7280;
+      background: #f3f4f6; padding: 2px 7px; border-radius: 4px;
+      display: inline-block; margin-bottom: 12px;
+    }
+
+    .dim-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .dim-table td { padding: 5px 8px; }
+    .dim-table tr:nth-child(odd) td { background: #f9fafb; }
+    .dim-table td:first-child { color: #6b7280; }
+    .dim-table td:last-child { font-weight: 600; text-align: right; }
+
+    .tag-list { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+    .tag {
+      font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 500;
+    }
+    .tag.green { background: #d1fae5; color: #065f46; }
+    .tag.blue { background: #dbeafe; color: #1e40af; }
+    .tag.orange { background: #fef3c7; color: #92400e; }
+
+    .params-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .param-block {
+      background: white; border-radius: 10px; padding: 18px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06); border: 1px solid #eef0f4;
+    }
+    .param-block h4 { font-size: 13px; font-weight: 700; margin-bottom: 12px; color: #374151; }
+    .param-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #f3f4f6; font-size: 13px; }
+    .param-row:last-child { border-bottom: none; }
+    .param-row .key { color: #6b7280; }
+    .param-row .val { font-weight: 600; color: #0f3460; }
+    .param-row .val.red { color: #e94560; }
+    .param-row .val.green { color: #10b981; }
+
+    .assembly-table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
+    .assembly-table thead tr { background: #0f3460; color: white; }
+    .assembly-table th { padding: 11px 14px; text-align: left; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .assembly-table td { padding: 10px 14px; border-bottom: 1px solid #f0f2f5; font-size: 13px; }
+    .assembly-table tr:last-child td { border-bottom: none; }
+    .assembly-table tr:hover td { background: #f9fafb; }
+    .num-badge {
+      width: 24px; height: 24px; border-radius: 50%; display: inline-flex;
+      align-items: center; justify-content: center; font-weight: 700; font-size: 11px; color: white;
+    }
+
+    .warning-box {
+      background: #fff7ed; border: 1px solid #fed7aa; border-radius: 10px;
+      padding: 14px 18px; display: flex; gap: 12px; align-items: flex-start;
+      margin-bottom: 16px;
+    }
+    .warning-box .icon { font-size: 20px; flex-shrink: 0; }
+    .warning-box p { font-size: 13px; color: #92400e; line-height: 1.6; }
+
+    .checklist { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .checklist li {
+      background: white; padding: 10px 14px; border-radius: 8px;
+      border: 1px solid #eef0f4; font-size: 13px; display: flex; align-items: center; gap: 8px;
+    }
+    .checklist li::before { content: '☐'; font-size: 16px; color: #d1d5db; }
+
+    .total-bar {
+      background: linear-gradient(135deg, #0f3460, #16213e); color: white;
+      border-radius: 12px; padding: 18px 24px; display: flex; justify-content: space-between; align-items: center;
+      margin-top: 20px;
+    }
+    .total-bar .label { font-size: 13px; opacity: 0.8; }
+    .total-bar .value { font-size: 22px; font-weight: 700; }
+
+    footer {
+      text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;
+      border-top: 1px solid #e5e7eb; margin-top: 30px;
+    }
+
+    @media print {
+      body { background: white; }
+      .container { padding: 10px; }
+      header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .piece-card, .param-block, .assembly-table { box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🌱</div>
+  <div>
+    <h1>Fiche d'Impression 3D</h1>
+    <p>Système de Surveillance Automatisée de Cultures — ESP32-CAM Pan/Tilt</p>
+  </div>
+  <div class="badge">3 pièces · PLA</div>
+</header>
+
+<div class="container">
+
+  <!-- Info bar -->
+  <div class="info-bar">
+    <div class="info-chip">
+      <span class="icon">📐</span>
+      <div><span class="label">Hauteur totale</span><span class="value">~170 mm</span></div>
+    </div>
+    <div class="info-chip">
+      <span class="icon">🧱</span>
+      <div><span class="label">Matériau</span><span class="value">PLA / PETG</span></div>
+    </div>
+    <div class="info-chip">
+      <span class="icon">⏱️</span>
+      <div><span class="label">Temps estimé</span><span class="value">4 – 6 h</span></div>
+    </div>
+    <div class="info-chip">
+      <span class="icon">🖨️</span>
+      <div><span class="label">Remplissage</span><span class="value">Base 40% · Reste 20%</span></div>
+    </div>
+    <div class="info-chip">
+      <span class="icon">📅</span>
+      <div><span class="label">Fichiers</span><span class="value">.SCAD + .STL</span></div>
+    </div>
+  </div>
+
+  <!-- Pièces -->
+  <h2>Pièces à imprimer</h2>
+  <div class="pieces-grid">
+
+    <div class="piece-card clamp">
+      <h3>🔩 Pince de Fixation</h3>
+      <span class="filename">pince_fixation.scad</span>
+      <table class="dim-table">
+        <tr><td>Largeur (X)</td><td>70 mm</td></tr>
+        <tr><td>Profondeur (Y)</td><td>45 mm</td></tr>
+        <tr><td>Hauteur (Z)</td><td>70 mm</td></tr>
+        <tr><td>Slot rebord pot</td><td>26 mm</td></tr>
+        <tr><td>Canal câbles</td><td>10 × 10 mm</td></tr>
+        <tr><td>Trous vis</td><td>4 × M3</td></tr>
+      </table>
+      <div class="tag-list">
+        <span class="tag green">Base clamp</span>
+        <span class="tag blue">Rebord 25 mm</span>
+        <span class="tag orange">Infill 40%</span>
+      </div>
+    </div>
+
+    <div class="piece-card housing">
+      <h3>⚙️ Pan-Tilt Housing</h3>
+      <span class="filename">pan_tilt_housing.scad</span>
+      <table class="dim-table">
+        <tr><td>Largeur (X)</td><td>55 mm</td></tr>
+        <tr><td>Profondeur (Y)</td><td>45 mm</td></tr>
+        <tr><td>Hauteur (Z)</td><td>45 mm</td></tr>
+        <tr><td>Logement servo</td><td>2 × SG90</td></tr>
+        <tr><td>Trou axe</td><td>Ø 7 mm</td></tr>
+        <tr><td>Paroi min</td><td>3 mm</td></tr>
+      </table>
+      <div class="tag-list">
+        <span class="tag green">Servo PAN</span>
+        <span class="tag green">Servo TILT</span>
+        <span class="tag blue">Infill 20%</span>
+      </div>
+    </div>
+
+    <div class="piece-card camera">
+      <h3>📷 Boîtier ESP32-CAM</h3>
+      <span class="filename">boitier_esp32cam.scad</span>
+      <table class="dim-table">
+        <tr><td>Largeur (X)</td><td>35 mm</td></tr>
+        <tr><td>Profondeur (Y)</td><td>32 mm</td></tr>
+        <tr><td>Hauteur (Z)</td><td>55 mm</td></tr>
+        <tr><td>Paroi</td><td>2.5 mm</td></tr>
+        <tr><td>Trou objectif</td><td>12 × 12 mm</td></tr>
+        <tr><td>Trou USB</td><td>12 × 6 mm</td></tr>
+      </table>
+      <div class="tag-list">
+        <span class="tag orange">Objectif centré</span>
+        <span class="tag blue">Ventilation</span>
+        <span class="tag blue">Infill 20%</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Paramètres impression -->
+  <h2>Paramètres d'impression recommandés</h2>
+  <div class="params-grid">
+
+    <div class="param-block">
+      <h4>🖨️ Réglages machine</h4>
+      <div class="param-row"><span class="key">Hauteur de couche</span><span class="val">0.2 mm</span></div>
+      <div class="param-row"><span class="key">Largeur de paroi</span><span class="val">3 périmètres</span></div>
+      <div class="param-row"><span class="key">Remplissage (pince)</span><span class="val red">40 % Gyroïde</span></div>
+      <div class="param-row"><span class="key">Remplissage (housing/cam)</span><span class="val">20 % Grille</span></div>
+      <div class="param-row"><span class="key">Supports</span><span class="val red">OUI (pince)</span></div>
+      <div class="param-row"><span class="key">Adhérence plateau</span><span class="val">Brim 5 mm</span></div>
+    </div>
+
+    <div class="param-block">
+      <h4>🌡️ Températures (PLA)</h4>
+      <div class="param-row"><span class="key">Buse</span><span class="val">200 – 210 °C</span></div>
+      <div class="param-row"><span class="key">Plateau chauffant</span><span class="val">60 °C</span></div>
+      <div class="param-row"><span class="key">Vitesse impression</span><span class="val">50 mm/s</span></div>
+      <div class="param-row"><span class="key">Vitesse 1ère couche</span><span class="val">25 mm/s</span></div>
+      <div class="param-row"><span class="key">Rétraction</span><span class="val">5 mm / 45 mm/s</span></div>
+      <div class="param-row"><span class="key">Refroidissement</span><span class="val green">100% dès couche 2</span></div>
+    </div>
+
+    <div class="param-block">
+      <h4>📐 Tolérances à vérifier</h4>
+      <div class="param-row"><span class="key">Rebord jardinière mesuré</span><span class="val red">Mesurer avant print</span></div>
+      <div class="param-row"><span class="key">Slot pince (défaut)</span><span class="val">26 mm (rebord 25 mm)</span></div>
+      <div class="param-row"><span class="key">Jeu servo SG90</span><span class="val">1 mm chaque côté</span></div>
+      <div class="param-row"><span class="key">Trous vis M3</span><span class="val">Ø 3.4 mm</span></div>
+      <div class="param-row"><span class="key">Trou axe servo</span><span class="val">Ø 7 mm</span></div>
+    </div>
+
+    <div class="param-block">
+      <h4>🧱 Matériaux alternatifs</h4>
+      <div class="param-row"><span class="key">PLA standard</span><span class="val green">✓ Recommandé</span></div>
+      <div class="param-row"><span class="key">PETG</span><span class="val green">✓ Plus résistant</span></div>
+      <div class="param-row"><span class="key">ABS</span><span class="val">⚠ Difficile</span></div>
+      <div class="param-row"><span class="key">Résine</span><span class="val red">✗ Déconseillé</span></div>
+      <div class="param-row"><span class="key">Couleur conseillée</span><span class="val">Gris / Noir</span></div>
+    </div>
+
+  </div>
+
+  <!-- Ordre assemblage -->
+  <h2>Ordre d'impression et d'assemblage</h2>
+
+  <div class="warning-box">
+    <span class="icon">⚠️</span>
+    <p><strong>Important :</strong> Mesurez l'épaisseur réelle du rebord de votre jardinière avant de lancer l'impression. Si elle diffère de 25 mm, modifiez la variable <code>SLOT_W</code> dans <em>pince_fixation.scad</em> (SLOT_W = mesure + 1 mm de jeu).</p>
+  </div>
+
+  <table class="assembly-table">
+    <thead>
+      <tr>
+        <th>Ordre</th>
+        <th>Pièce</th>
+        <th>Fichier STL</th>
+        <th>Supports</th>
+        <th>Durée est.</th>
+        <th>Remarque</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="num-badge" style="background:#3b82f6">1</span></td>
+        <td><strong>Pince de Fixation</strong></td>
+        <td><code>pince_fixation.stl</code></td>
+        <td>✅ Oui</td>
+        <td>2 – 2.5 h</td>
+        <td>Imprimer à plat (slot vers le haut). Infill 40%.</td>
+      </tr>
+      <tr>
+        <td><span class="num-badge" style="background:#10b981">2</span></td>
+        <td><strong>Pan-Tilt Housing</strong></td>
+        <td><code>pan_tilt_housing.stl</code></td>
+        <td>⚠️ Léger</td>
+        <td>1.5 – 2 h</td>
+        <td>Orienter avec les logements servo vers le haut.</td>
+      </tr>
+      <tr>
+        <td><span class="num-badge" style="background:#f59e0b">3</span></td>
+        <td><strong>Boîtier ESP32-CAM</strong></td>
+        <td><code>boitier_esp32cam.stl</code></td>
+        <td>❌ Non</td>
+        <td>1 – 1.5 h</td>
+        <td>Face objectif vers l'avant. Vérifier les ouvertures.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Checklist -->
+  <h2>Checklist avant envoi à l'imprimeur</h2>
+  <ul class="checklist">
+    <li>Mesurer l'épaisseur du rebord de jardinière</li>
+    <li>Ajuster SLOT_W si nécessaire dans le .scad</li>
+    <li>Exporter les 3 fichiers STL (F6 puis Export)</li>
+    <li>Vérifier que les STL sont watertight (sans erreur)</li>
+    <li>Préciser PLA gris ou noir à l'imprimeur</li>
+    <li>Indiquer infill 40% pour la pince uniquement</li>
+    <li>Demander support pour la pince</li>
+    <li>Demander brim 5mm pour toutes les pièces</li>
+  </ul>
+
+  <!-- Total hauteur -->
+  <div class="total-bar">
+    <div>
+      <div class="label">Hauteur totale assemblée</div>
+      <div class="value">~170 mm</div>
+    </div>
+    <div style="text-align:right">
+      <div class="label">Pince 70 mm + Housing 45 mm + Cam 55 mm</div>
+      <div style="font-size:13px;opacity:0.7;margin-top:4px">Dans la plage optimale recommandée : 150 – 180 mm</div>
+    </div>
+    <div style="font-size:36px">✅</div>
+  </div>
+
+</div>
+
+<footer>
+  Projet IoT Agriculture — ESP32-CAM + Servo Pan/Tilt — Détection Maladies Plantes &nbsp;|&nbsp;
+  Fichiers : <code>pince_fixation.scad</code> · <code>pan_tilt_housing.scad</code> · <code>boitier_esp32cam.scad</code> · <code>assemblage_complet.scad</code>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,171 @@
+# ============================================================
+# FreeCAD Macro - Système Détection Maladies Plantes
+# Pour exécuter: Macro → Macros → Sélectionner ce fichier → Execute
+# ============================================================
+
+import FreeCAD as App
+import Part
+import FreeCADGui as Gui
+
+doc = App.newDocument("Detection_Maladies_Plantes")
+
+# ============================================================
+# PIECE 1 : PINCE DE FIXATION (70 x 45 x 70 mm)
+# ============================================================
+def make_pince():
+    # Corps principal
+    corps = Part.makeBox(70, 45, 70)
+
+    # Slot C (ouvert vers le bas, centré en X)
+    slot = Part.makeBox(26, 36, 45)
+    slot.translate(App.Vector((70-26)/2, -1, 0))
+
+    # Canal câbles 10x10mm
+    cable = Part.makeBox(10, 10, 72)
+    cable.translate(App.Vector(70-5-10, 45/2-5, -1))
+
+    # 4 trous vis M3 (cylindres)
+    trous = []
+    for x, y in [(12, 10), (12, 35), (58, 10), (58, 35)]:
+        t = Part.makeCylinder(1.7, 7)
+        t.translate(App.Vector(x, y, 64))
+        trous.append(t)
+
+    # Soustraction
+    pince = corps.cut(slot)
+    pince = pince.cut(cable)
+    for t in trous:
+        pince = pince.cut(t)
+
+    obj = doc.addObject("Part::Feature", "Pince_Fixation")
+    obj.Shape = pince
+    obj.Label = "Pince de Fixation (70x45x70mm)"
+    return obj
+
+# ============================================================
+# PIECE 2 : PAN-TILT HOUSING (55 x 45 x 45 mm)
+# ============================================================
+def make_housing():
+    # Corps principal
+    corps = Part.makeBox(55, 45, 45)
+
+    # Logement servo PAN (centré, bas)
+    pan = Part.makeBox(25, 14, 32)
+    pan.translate(App.Vector((55-25)/2, (45-14)/2, 3))
+
+    # Trou axe PAN (vertical)
+    axe_pan = Part.makeCylinder(3.5, 15)
+    axe_pan.translate(App.Vector(55/2, 45/2, 32))
+
+    # Logement servo TILT (paroi gauche)
+    tilt = Part.makeBox(15, 25, 31)
+    tilt.translate(App.Vector(-1, (45-25)/2, 45-31-3))
+
+    # Trou axe TILT (horizontal)
+    axe_tilt = Part.makeCylinder(3.5, 12)
+    axe_tilt.rotate(App.Vector(0,0,0), App.Vector(0,1,0), 90)
+    axe_tilt.translate(App.Vector(15, 45/2, 45-31/2-3))
+
+    # Canal câbles 10x10mm
+    cable = Part.makeBox(10, 10, 47)
+    cable.translate(App.Vector(55-3-10, 45/2-5, -1))
+
+    # 4 trous M3 base
+    trous = []
+    for x, y in [(10, 10), (10, 35), (45, 10), (45, 35)]:
+        t = Part.makeCylinder(1.7, 5)
+        t.translate(App.Vector(x, y, -1))
+        trous.append(t)
+
+    housing = corps.cut(pan)
+    housing = housing.cut(axe_pan)
+    housing = housing.cut(tilt)
+    housing = housing.cut(axe_tilt)
+    housing = housing.cut(cable)
+    for t in trous:
+        housing = housing.cut(t)
+
+    obj = doc.addObject("Part::Feature", "PanTilt_Housing")
+    obj.Shape = housing
+    obj.Label = "Pan-Tilt Housing (55x45x45mm)"
+    # Positionner au-dessus de la pince
+    obj.Placement = App.Placement(App.Vector(7.5, 0, 78), App.Rotation())
+    return obj
+
+# ============================================================
+# PIECE 3 : BOITIER ESP32-CAM (35 x 32 x 55 mm)
+# ============================================================
+def make_boitier_cam():
+    w, d, h = 35, 32, 55
+    mur = 2.5
+
+    # Corps externe
+    ext = Part.makeBox(w, d, h)
+
+    # Évidement intérieur
+    inner = Part.makeBox(w - 2*mur, d - 2*mur, h - mur)
+    inner.translate(App.Vector(mur, mur, mur))
+
+    # Trou objectif 12x12 (face avant)
+    obj_hole = Part.makeBox(12, mur+2, 12)
+    obj_hole.translate(App.Vector((w-12)/2, -1, h-38))
+
+    # Trou flash 8x8
+    flash = Part.makeBox(8, mur+2, 8)
+    flash.translate(App.Vector((w-8)/2+12, -1, h-36))
+
+    # Trou USB bas 12x6
+    usb = Part.makeBox(12, 6, mur+2)
+    usb.translate(App.Vector((w-12)/2, (d-6)/2, -1))
+
+    # Fentes ventilation latérales
+    vents = []
+    for z in [12, 25, 38]:
+        v1 = Part.makeBox(mur+2, 14, 3)
+        v1.translate(App.Vector(-1, (d-14)/2, z))
+        v2 = Part.makeBox(mur+2, 14, 3)
+        v2.translate(App.Vector(w-mur-1, (d-14)/2, z))
+        vents += [v1, v2]
+
+    boitier = ext.cut(inner)
+    boitier = boitier.cut(obj_hole)
+    boitier = boitier.cut(flash)
+    boitier = boitier.cut(usb)
+    for v in vents:
+        boitier = boitier.cut(v)
+
+    obj = doc.addObject("Part::Feature", "Boitier_ESP32CAM")
+    obj.Shape = boitier
+    obj.Label = "Boîtier ESP32-CAM (35x32x55mm)"
+    # Positionner en haut de l'assemblage
+    obj.Placement = App.Placement(App.Vector(17.5, 6.5, 128), App.Rotation())
+    return obj
+
+# ============================================================
+# CREATION ET AFFICHAGE
+# ============================================================
+print("Création des pièces...")
+
+p1 = make_pince()
+print("✓ Pince de Fixation créée")
+
+p2 = make_housing()
+print("✓ Pan-Tilt Housing créé")
+
+p3 = make_boitier_cam()
+print("✓ Boîtier ESP32-CAM créé")
+
+# Appliquer couleurs
+p1.ViewObject.ShapeColor = (0.6, 0.6, 0.65)
+p2.ViewObject.ShapeColor = (0.55, 0.55, 0.60)
+p3.ViewObject.ShapeColor = (0.5, 0.5, 0.55)
+
+doc.recompute()
+Gui.activeDocument().activeView().viewIsometric()
+Gui.SendMsgToActiveView("ViewFit")
+
+print("\n=== ASSEMBLAGE COMPLET ===")
+print("Hauteur totale: ~170mm")
+print("Pièces: Pince (70mm) + Housing (45mm) + Cam (55mm)")
+print("\nPour exporter en STL:")
+print("Sélectionner une pièce → File → Export → STL")
